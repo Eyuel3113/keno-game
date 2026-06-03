@@ -34,7 +34,7 @@ export default function History() {
           </div>
         ) : (
           betHistory.map((bet) => {
-            const isPending = bet.roundStatus !== 'COMPLETED';
+            const isPending = bet.roundStatus === 'PENDING' || bet.roundStatus === 'DRAWING';
             const won = bet.payout > 0;
             const profitLoss = bet.payout - bet.amount;
             return (
