@@ -1,0 +1,59 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  wallet    Wallet?
+  bets      Bet[]
+  transactions Transaction[]
+}
+
+model Wallet {
+  id        String   @id @default(uuid())
+  balance   Float    @default(0)
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model GameRound {
+  id          String   @id @default(uuid())
+  drawnNumbers Int[]    // Array of drawn numbers
+  status      String   @default("PENDING") // PENDING, DRAWING, COMPLETED
+  createdAt   DateTime @default(now())
+  endedAt     DateTime?
+  bets        Bet[]
+}
+
+model Bet {
+  id          String   @id @default(uuid())
+  amount      Float
+  picks       Int[]    // Array of numbers picked by the user
+  hits        Int      @default(0) // Number of matching picks
+  payout      Float    @default(0) // Total payout amount
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  roundId     String
+  round       GameRound @relation(fields: [roundId], references: [id])
+  createdAt   DateTime @default(now())
+}
+
+model Transaction {
+  id        String   @id @default(uuid())
+  type      String   // DEPOSIT, WITHDRAW
+  amount    Float
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+}
