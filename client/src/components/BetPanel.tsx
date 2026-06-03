@@ -50,7 +50,7 @@ export default function BetPanel() {
   };
 
   return (
-    <div className="bg-slate-800/60 backdrop-blur-sm rounded-2xl border border-slate-700/50 shadow-2xl overflow-hidden p-3 flex flex-col gap-3">
+    <div className="bg-slate-800/60 backdrop-blur-sm rounded-2xl border border-slate-700/50 shadow-2xl p-3 flex flex-col gap-3">
       
       {/* Betting Control Row (Betting phase only) */}
       {!isResultPhase && (
@@ -139,7 +139,7 @@ export default function BetPanel() {
               {placedBets.length} placed
             </span>
           </div>
-          <div className="flex flex-col gap-1.5 max-h-32 overflow-y-auto pr-1">
+          <div className="flex flex-col gap-1.5 pr-1">
             {placedBets.map((bet, idx) => (
               <div key={idx} className="flex items-center justify-between bg-slate-700/40 rounded-lg px-3 py-2">
                 <div className="flex items-center gap-1.5">
