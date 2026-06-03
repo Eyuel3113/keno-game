@@ -66,6 +66,7 @@ export default function DrawResults() {
             picks: b.picks,
             roundId: b.roundId,
             drawnNumbers: b.drawnNumbers || [],
+            roundStatus: b.roundStatus,
             hits: b.hits || 0,
             payout: b.payout || 0,
             createdAt: b.createdAt,

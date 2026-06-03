@@ -33,7 +33,7 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
       orderBy: { createdAt: 'desc' },
       take: 50,
       include: {
-        round: { select: { id: true, drawnNumbers: true, createdAt: true } },
+        round: { select: { id: true, status: true, drawnNumbers: true, createdAt: true } },
       },
     });
 
@@ -43,6 +43,7 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
       picks: bet.picks,
       roundId: bet.roundId,
       drawnNumbers: bet.round.drawnNumbers,
+      roundStatus: bet.round.status,
       hits: bet.hits,
       payout: bet.payout,
       profit: bet.payout - bet.amount,

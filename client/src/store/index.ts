@@ -7,6 +7,7 @@ export interface BetHistoryItem {
   picks: number[];
   roundId: string;
   drawnNumbers: number[];
+  roundStatus?: string;
   hits: number;
   payout: number;
   createdAt: string;

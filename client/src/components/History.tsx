@@ -34,6 +34,7 @@ export default function History() {
           </div>
         ) : (
           betHistory.map((bet) => {
+            const isPending = bet.roundStatus !== 'COMPLETED';
             const won = bet.payout > 0;
             const profitLoss = bet.payout - bet.amount;
             return (
@@ -44,12 +45,14 @@ export default function History() {
                 {/* Left: time + hits */}
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5 mb-0.5">
-                    <span className={`text-xs font-semibold ${won ? 'text-emerald-400' : 'text-slate-400'}`}>
-                      {won ? '🏆 Win' : '• Loss'}
+                    <span className={`text-xs font-semibold ${
+                      isPending ? 'text-violet-400 animate-pulse' : won ? 'text-emerald-400' : 'text-slate-400'
+                    }`}>
+                      {isPending ? '⏳ Pending' : won ? '🏆 Win' : '• Loss'}
                     </span>
                     <span className="text-slate-600 text-xs">·</span>
                     <span className="text-xs text-slate-500">
-                      {bet.hits}/{bet.picks.length} hits
+                      {isPending ? '-' : bet.hits}/{bet.picks.length} hits
                     </span>
                   </div>
                   <p className="text-xs text-slate-500 truncate">
@@ -66,9 +69,13 @@ export default function History() {
                 {/* Right: payout */}
                 <div className="text-right">
                   <p className="text-xs text-slate-500">P/L</p>
-                  <p className={`text-sm font-bold ${won ? 'text-emerald-400' : 'text-red-400'}`}>
-                    {profitLoss >= 0 ? `+${profitLoss.toFixed(2)} ETB` : `-${Math.abs(profitLoss).toFixed(2)} ETB`}
-                  </p>
+                  {isPending ? (
+                    <p className="text-sm font-semibold text-slate-400 italic">Pending</p>
+                  ) : (
+                    <p className={`text-sm font-bold ${won ? 'text-emerald-400' : 'text-red-400'}`}>
+                      {profitLoss >= 0 ? `+${profitLoss.toFixed(2)} ETB` : `-${Math.abs(profitLoss).toFixed(2)} ETB`}
+                    </p>
+                  )}
                 </div>
               </div>
             );
