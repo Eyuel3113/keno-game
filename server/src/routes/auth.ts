@@ -37,7 +37,7 @@ const router = Router();
  *                 example: secret123
  *     responses:
  *       201:
- *         description: User created successfully. Returns JWT and user info with starting balance of 1000 chips.
+ *         description: User created successfully. Returns JWT and user info with starting balance of 50 chips.
  *         content:
  *           application/json:
  *             schema:
@@ -74,7 +74,7 @@ router.post('/register', async (req: Request, res: Response) => {
       data: {
         email,
         password: hashedPassword,
-        wallet: { create: { balance: 1000 } },
+        wallet: { create: { balance: 50 } },
       },
       include: { wallet: true },
     });

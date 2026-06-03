@@ -242,7 +242,7 @@ export default function DrawResults() {
                   ) : (
                     <div className="space-y-1">
                       <p className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-red-500 via-orange-400 to-rose-400 uppercase tracking-wider animate-pulse">
-                        😔 YOU LOSE
+                        🔴 YOU LOSE
                       </p>
                       <p className="text-xs text-slate-400">
                         Better luck next round!
