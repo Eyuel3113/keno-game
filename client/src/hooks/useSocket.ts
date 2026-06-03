@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useStore } from '../store';
-import { walletApi, historyApi } from '../api';
 
 let socketInstance: Socket | null = null;
 
@@ -13,9 +12,7 @@ export const useSocket = () => {
     setCountdown,
     setBettingDuration,
     setAllRoundPicks,
-    setBalance,
     setLastPayout,
-    setBetHistory,
     token,
   } = useStore();
 
@@ -76,45 +73,10 @@ export const useSocket = () => {
     });
 
     // ── Draw results arrived ──────────────────────────────────────────────
-    socket.on('round:result', ({ roundId, drawnNumbers }: { roundId: string; drawnNumbers: number[] }) => {
+    socket.on('round:result', ({ roundId: _roundId, drawnNumbers }: { roundId: string; drawnNumbers: number[] }) => {
       setDrawnNumbers(drawnNumbers);
       setIsDrawing(false);
       setCountdown(0);
-
-      // Fetch updated wallet balance (non-blocking)
-      walletApi.getBalance()
-        .then((res) => setBalance(res.data.balance))
-        .catch(() => {});
-
-      // Fetch bet history to compute win/loss (non-blocking)
-      historyApi.getHistory(20)
-        .then((res) => {
-          const rawBets = Array.isArray(res.data) ? res.data : (res.data as any)?.bets || [];
-          const mapped = rawBets.map((b: any) => ({
-            id: b.id,
-            amount: b.amount,
-            picks: b.picks,
-            roundId: b.roundId,
-            drawnNumbers: b.drawnNumbers || [],
-            hits: b.hits || 0,
-            payout: b.payout || 0,
-            createdAt: b.createdAt,
-          }));
-          setBetHistory(mapped);
-
-          const targetRoundId = roundId || useStore.getState().currentRoundId;
-          if (targetRoundId) {
-            const roundBets = mapped.filter((b: any) => b.roundId === targetRoundId);
-            if (roundBets.length > 0) {
-              const totalPayout = roundBets.reduce((sum: number, b: any) => sum + b.payout, 0);
-              const maxHits = Math.max(...roundBets.map((b: any) => b.hits));
-              setLastPayout(totalPayout, maxHits);
-            } else {
-              setLastPayout(null, null);
-            }
-          }
-        })
-        .catch(() => {});
     });
 
     // ── Reconnect: re-sync state ──────────────────────────────────────────

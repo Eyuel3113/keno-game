@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useStore } from '../store';
+import { walletApi, historyApi } from '../api';
 
 const NEXT_ROUND_WAIT_S = 30;
 // Post-draw gap: how long after animation complete before next round (matches server gap)
@@ -13,6 +14,9 @@ export default function DrawResults() {
     currentRoundId,
     allRoundPicks,
     betHistory,
+    setBalance,
+    setBetHistory,
+    setLastPayout,
   } = useStore();
 
   const [visibleNumbers, setVisibleNumbers] = useState<number[]>([]);
@@ -43,6 +47,43 @@ export default function DrawResults() {
     }, 1200);
     return () => clearInterval(interval);
   }, [drawnNumbers]);
+
+  // ── Fetch updated data when draw animation completes ─────────────────────
+  useEffect(() => {
+    if (isAnimationComplete && currentRoundId) {
+      // Fetch updated wallet balance
+      walletApi.getBalance()
+        .then((res) => setBalance(res.data.balance))
+        .catch(() => {});
+
+      // Fetch bet history to compute win/loss
+      historyApi.getHistory(20)
+        .then((res) => {
+          const rawBets = Array.isArray(res.data) ? res.data : (res.data as any)?.bets || [];
+          const mapped = rawBets.map((b: any) => ({
+            id: b.id,
+            amount: b.amount,
+            picks: b.picks,
+            roundId: b.roundId,
+            drawnNumbers: b.drawnNumbers || [],
+            hits: b.hits || 0,
+            payout: b.payout || 0,
+            createdAt: b.createdAt,
+          }));
+          setBetHistory(mapped);
+
+          const roundBets = mapped.filter((b: any) => b.roundId === currentRoundId);
+          if (roundBets.length > 0) {
+            const totalPayout = roundBets.reduce((sum: number, b: any) => sum + b.payout, 0);
+            const maxHits = Math.max(...roundBets.map((b: any) => b.hits));
+            setLastPayout(totalPayout, maxHits);
+          } else {
+            setLastPayout(null, null);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [isAnimationComplete, currentRoundId, setBalance, setBetHistory, setLastPayout]);
 
 
 
