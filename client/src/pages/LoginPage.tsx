@@ -11,10 +11,13 @@ export default function LoginPage() {
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
 
-  // Show success toast when redirected after registration
   useEffect(() => {
-    if (searchParams.get('registered') === '1') {
-      toast('Account created! Please sign in.', 'success');
+    if (searchParams.get('verified') === '1') {
+      toast('Email verified! You can now sign in.', 'success');
+    } else if (searchParams.get('registered') === '1') {
+      toast('Account created! Please check your email to verify.', 'success');
+    } else if (searchParams.get('reset') === '1') {
+      toast('Password reset successfully! Sign in with your new password.', 'success');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -25,8 +28,10 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden"
-      style={{background: 'radial-gradient(ellipse at 60% 30%, #0d3320 0%, #051a0e 40%, #020d07 100%)'}}>
+    <div
+      className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden"
+      style={{ background: 'radial-gradient(ellipse at 60% 30%, #0d3320 0%, #051a0e 40%, #020d07 100%)' }}
+    >
       {/* Animated green glow orbs */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-green-600/10 rounded-full blur-3xl" />
@@ -37,14 +42,12 @@ export default function LoginPage() {
       <div className="relative w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8 flex flex-col items-center">
-          <img src="/logo-banner.jpg" alt="Kendo" className="w-full max-w-sm rounded-2xl object-cover shadow-2xl shadow-slate-950/60 mb-4" style={{maxHeight: '180px'}} />
+          <img src="/logo-banner.jpg" alt="Kendo" className="w-full max-w-sm rounded-2xl object-cover shadow-2xl shadow-slate-950/60 mb-4" style={{ maxHeight: '180px' }} />
           <p className="text-slate-400 text-sm mt-1">Sign in to play</p>
         </div>
 
         {/* Card */}
         <div className="bg-slate-800/70 backdrop-blur-md border border-slate-700/50 rounded-2xl shadow-2xl p-8">
-          {/* Toasts handle errors and success — no inline banners needed */}
-
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label htmlFor="login-email" className="block text-sm font-medium text-slate-300 mb-2">
@@ -63,9 +66,17 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label htmlFor="login-password" className="block text-sm font-medium text-slate-300 mb-2">
-                Password
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label htmlFor="login-password" className="block text-sm font-medium text-slate-300">
+                  Password
+                </label>
+                <Link
+                  to="/forgot-password"
+                  className="text-xs text-violet-400 hover:text-violet-300 transition-colors font-medium"
+                >
+                  Forgot password?
+                </Link>
+              </div>
               <div className="relative">
                 <input
                   id="login-password"
@@ -98,7 +109,9 @@ export default function LoginPage() {
                   <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   Signing in…
                 </span>
-              ) : 'Sign In'}
+              ) : (
+                'Sign In'
+              )}
             </button>
           </form>
 

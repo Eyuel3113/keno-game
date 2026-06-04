@@ -45,6 +45,18 @@ export const authApi = {
 
   register: (email: string, password: string) =>
     api.post<{ message: string }>('/auth/register', { email, password }),
+
+  verifyEmail: (token: string) =>
+    api.get<{ message: string }>(`/auth/verify-email?token=${token}`),
+
+  resendVerification: (email: string) =>
+    api.post<{ message: string }>('/auth/resend-verification', { email }),
+
+  forgotPassword: (email: string) =>
+    api.post<{ message: string }>('/auth/forgot-password', { email }),
+
+  resetPassword: (token: string, password: string) =>
+    api.post<{ message: string }>('/auth/reset-password', { token, password }),
 };
 
 // ─── Wallet ──────────────────────────────────────────────────────────────────

@@ -3,6 +3,9 @@ import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import GamePage from './pages/GamePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import VerifyEmailPage from './pages/VerifyEmailPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import { useStore } from './store';
 import { walletApi } from './api';
 
@@ -552,6 +555,19 @@ function App() {
                 <RegisterPage />
               </PublicRoute>
             }
+          />
+          <Route
+            path="/forgot-password"
+            element={
+              <PublicRoute>
+                <ForgotPasswordPage />
+              </PublicRoute>
+            }
+          />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
+          <Route
+            path="/reset-password"
+            element={<ResetPasswordPage />}
           />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

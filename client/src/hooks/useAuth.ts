@@ -24,6 +24,7 @@ export const useAuth = () => {
       navigate('/');
     } catch (err: unknown) {
       const msg =
+        (err as { response?: { data?: { message?: string; error?: string } } })?.response?.data?.message ||
         (err as { response?: { data?: { error?: string } } })?.response?.data?.error ||
         'Login failed. Please check your credentials.';
       setError(msg);
@@ -38,13 +39,49 @@ export const useAuth = () => {
     setError(null);
     try {
       await authApi.register(email, password);
-      navigate('/login?registered=1');
+      // Don't navigate — caller will show "check your email" UI
     } catch (err: unknown) {
       const msg =
+        (err as { response?: { data?: { message?: string; error?: string } } })?.response?.data?.message ||
         (err as { response?: { data?: { error?: string } } })?.response?.data?.error ||
         'Registration failed. Please try again.';
       setError(msg);
       toastFn?.(msg, 'error');
+      throw err; // re-throw so caller knows it failed
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const forgotPassword = async (email: string, toastFn?: ToastFn) => {
+    setLoading(true);
+    setError(null);
+    try {
+      await authApi.forgotPassword(email);
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        'Something went wrong. Please try again.';
+      setError(msg);
+      toastFn?.(msg, 'error');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resetPassword = async (token: string, password: string, toastFn?: ToastFn) => {
+    setLoading(true);
+    setError(null);
+    try {
+      await authApi.resetPassword(token, password);
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        'Password reset failed. Please try again.';
+      setError(msg);
+      toastFn?.(msg, 'error');
+      throw err;
     } finally {
       setLoading(false);
     }
@@ -64,5 +101,5 @@ export const useAuth = () => {
     }
   };
 
-  return { login, register, signOut, fetchBalance, loading, error, setError };
+  return { login, register, forgotPassword, resetPassword, signOut, fetchBalance, loading, error, setError };
 };
