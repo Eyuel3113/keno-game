@@ -35,16 +35,16 @@ api.interceptors.response.use(
 // ─── Auth ────────────────────────────────────────────────────────────────────
 export interface LoginResponse {
   token: string;
-  user: { id: string; email: string };
+  user: { id: string; email: string; phoneNumber?: string };
   balance: number;
 }
 
 export const authApi = {
-  login: (email: string, password: string) =>
-    api.post<LoginResponse>('/auth/login', { email, password }),
+  login: (identifier: string, password: string) =>
+    api.post<LoginResponse>('/auth/login', { identifier, password }),
 
-  register: (email: string, password: string) =>
-    api.post<{ message: string }>('/auth/register', { email, password }),
+  register: (email: string, password: string, phoneNumber?: string) =>
+    api.post<{ message: string }>('/auth/register', { email, password, phoneNumber }),
 
   verifyEmail: (token: string) =>
     api.get<{ message: string }>(`/auth/verify-email?token=${token}`),
@@ -69,12 +69,16 @@ export const walletApi = {
   withdraw: (amount: number) =>
     api.post<{ balance: number }>('/wallet/withdraw', { amount }),
 
+  transfer: (recipient: string, amount: number) =>
+    api.post<{ balance: number; message: string }>('/wallet/transfer', { recipient, amount }),
+
   getTransactions: () =>
     api.get<{
       transactions: Array<{
         id: string;
-        type: 'DEPOSIT' | 'WITHDRAW';
+        type: 'DEPOSIT' | 'WITHDRAW' | 'TRANSFER_SENT' | 'TRANSFER_RECEIVED';
         amount: number;
+        description?: string;
         createdAt: string;
       }>;
     }>('/wallet/transactions'),

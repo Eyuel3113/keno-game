@@ -208,4 +208,141 @@ router.get('/transactions', authenticate, async (req: AuthRequest, res: Response
   }
 });
 
+/**
+ * @swagger
+ * /api/wallet/transfer:
+ *   post:
+ *     summary: Transfer chips to another user via email
+ *     tags: [Wallet]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [recipientEmail, amount]
+ *             properties:
+ *               recipientEmail:
+ *                 type: string
+ *                 example: friend@example.com
+ *               amount:
+ *                 type: number
+ *                 minimum: 1
+ *                 example: 100
+ *     responses:
+ *       200:
+ *         description: Transfer successful
+ *       400:
+ *         description: Invalid input or insufficient balance
+ *       404:
+ *         description: Recipient not found
+ */
+router.post('/transfer', authenticate, async (req: AuthRequest, res: Response) => {
+  const senderId = req.user?.id;
+  const senderEmail = req.user?.email;
+  const { recipient: recipientIdentifier, amount } = req.body;
+
+  if (!senderId) return res.status(401).json({ message: 'Unauthorized' });
+
+  if (!recipientIdentifier || typeof recipientIdentifier !== 'string') {
+    return res.status(400).json({ message: 'Recipient email or phone is required' });
+  }
+
+  if (!amount || typeof amount !== 'number' || amount <= 0) {
+    return res.status(400).json({ message: 'Amount must be a positive number' });
+  }
+
+  // Determine if identifier is a phone number or email
+  const isPhone = !recipientIdentifier.includes('@');
+  let lookupKey: { email: string } | { phoneNumber: string };
+
+  if (isPhone) {
+    // Format Ethiopian phone number
+    let cleanPhone = recipientIdentifier.replace(/[^\d]/g, '');
+    if (cleanPhone.startsWith('0')) cleanPhone = cleanPhone.slice(1);
+    if (cleanPhone.startsWith('251')) cleanPhone = cleanPhone.slice(3);
+    if (!cleanPhone || cleanPhone.length < 9) {
+      return res.status(400).json({ message: 'Invalid phone number. Must be 9 digits.' });
+    }
+    const formattedPhone = `+251${cleanPhone}`;
+
+    // Prevent self-transfer by phone
+    const senderUser = await prisma.user.findUnique({ where: { id: senderId } });
+    if (senderUser?.phoneNumber === formattedPhone) {
+      return res.status(400).json({ message: 'Cannot transfer to yourself' });
+    }
+
+    lookupKey = { phoneNumber: formattedPhone };
+  } else {
+    const normalizedEmail = recipientIdentifier.toLowerCase();
+    if (senderEmail && senderEmail.toLowerCase() === normalizedEmail) {
+      return res.status(400).json({ message: 'Cannot transfer to yourself' });
+    }
+    lookupKey = { email: normalizedEmail };
+  }
+
+  try {
+    // 1. Find recipient
+    const recipient = await prisma.user.findUnique({
+      where: lookupKey,
+      include: { wallet: true },
+    });
+
+    if (!recipient || !recipient.wallet) {
+      return res.status(404).json({ message: 'Recipient not found' });
+    }
+
+    // 2. Find sender wallet
+    const senderWallet = await prisma.wallet.findUnique({ where: { userId: senderId } });
+    if (!senderWallet) {
+      return res.status(404).json({ message: 'Sender wallet not found' });
+    }
+
+    if (senderWallet.balance < amount) {
+      return res.status(400).json({ message: 'Insufficient balance' });
+    }
+
+    const recipientLabel = recipient.email;
+
+    // 3. Perform transfer inside transaction
+    const [updatedSenderWallet] = await prisma.$transaction([
+      // Deduct from sender
+      prisma.wallet.update({
+        where: { userId: senderId },
+        data: { balance: { decrement: amount } },
+      }),
+      // Add to recipient
+      prisma.wallet.update({
+        where: { userId: recipient.id },
+        data: { balance: { increment: amount } },
+      }),
+      // Create TRANSFER_SENT transaction log for sender
+      prisma.transaction.create({
+        data: {
+          userId: senderId,
+          type: 'TRANSFER_SENT',
+          amount,
+          description: `Transferred to ${recipientLabel}`,
+        },
+      }),
+      // Create TRANSFER_RECEIVED transaction log for recipient
+      prisma.transaction.create({
+        data: {
+          userId: recipient.id,
+          type: 'TRANSFER_RECEIVED',
+          amount,
+          description: `Received from ${senderEmail || 'another user'}`,
+        },
+      }),
+    ]);
+
+    return res.json({ balance: updatedSenderWallet.balance, message: 'Transfer successful' });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+
 export default router;

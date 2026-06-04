@@ -7,9 +7,21 @@ import { sendVerificationEmail, sendPasswordResetEmail } from '../services/email
 
 const router = Router();
 
+function formatEthiopianPhoneNumber(phone: string): string {
+  let clean = phone.replace(/[^\d+]/g, '');
+  if (clean.startsWith('0')) {
+    clean = '+251' + clean.slice(1);
+  } else if (clean.startsWith('251') && !clean.startsWith('+')) {
+    clean = '+' + clean;
+  } else if (!clean.startsWith('+') && /^[79]/.test(clean)) {
+    clean = '+251' + clean;
+  }
+  return clean;
+}
+
 // ─── Register ─────────────────────────────────────────────────────────────────
 router.post('/register', async (req: Request, res: Response) => {
-  const { email, password } = req.body;
+  const { email, password, phoneNumber } = req.body;
 
   if (!email || !password) {
     return res.status(400).json({ message: 'Email and password are required' });
@@ -21,6 +33,15 @@ router.post('/register', async (req: Request, res: Response) => {
       return res.status(409).json({ message: 'User already exists' });
     }
 
+    let formattedPhone: string | null = null;
+    if (phoneNumber) {
+      formattedPhone = formatEthiopianPhoneNumber(phoneNumber);
+      const existingPhone = await prisma.user.findUnique({ where: { phoneNumber: formattedPhone } });
+      if (existingPhone) {
+        return res.status(409).json({ message: 'Phone number already registered' });
+      }
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
     const verifyToken = crypto.randomBytes(32).toString('hex');
     const verifyExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
@@ -28,6 +49,7 @@ router.post('/register', async (req: Request, res: Response) => {
     await prisma.user.create({
       data: {
         email,
+        phoneNumber: formattedPhone,
         password: hashedPassword,
         verifyToken,
         verifyExpires,
@@ -51,15 +73,22 @@ router.post('/register', async (req: Request, res: Response) => {
 
 // ─── Login ────────────────────────────────────────────────────────────────────
 router.post('/login', async (req: Request, res: Response) => {
-  const { email, password } = req.body;
+  const { email, identifier, password } = req.body;
+  const loginId = identifier || email;
 
-  if (!email || !password) {
-    return res.status(400).json({ message: 'Email and password are required' });
+  if (!loginId || !password) {
+    return res.status(400).json({ message: 'Identifier and password are required' });
   }
 
   try {
-    const user = await prisma.user.findUnique({
-      where: { email },
+    let queryCond: any = { email: loginId };
+    if (!loginId.includes('@')) {
+      const formattedPhone = formatEthiopianPhoneNumber(loginId);
+      queryCond = { phoneNumber: formattedPhone };
+    }
+
+    const user = await prisma.user.findFirst({
+      where: queryCond,
       include: { wallet: true },
     });
 
@@ -86,7 +115,7 @@ router.post('/login', async (req: Request, res: Response) => {
 
     return res.json({
       token,
-      user: { id: user.id, email: user.email, balance: user.wallet?.balance },
+      user: { id: user.id, email: user.email, phoneNumber: user.phoneNumber, balance: user.wallet?.balance },
     });
   } catch (err) {
     console.error(err);

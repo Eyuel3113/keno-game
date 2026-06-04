@@ -28,7 +28,12 @@ interface DepositModalProps {
 
 function DepositModal({ isOpen, onClose }: DepositModalProps) {
   const { setBalance } = useStore();
+  const [tab, setTab] = useState<'deposit' | 'transfer'>('deposit');
+  const [transferMethod, setTransferMethod] = useState<'email' | 'phone'>('email');
   const [depositAmount, setDepositAmount] = useState(100);
+  const [recipientEmail, setRecipientEmail] = useState('');
+  const [recipientPhone, setRecipientPhone] = useState('');
+  const [transferAmount, setTransferAmount] = useState(50);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
@@ -56,6 +61,55 @@ function DepositModal({ isOpen, onClose }: DepositModalProps) {
     }
   };
 
+  const handleTransfer = async () => {
+    let recipient = '';
+    if (transferMethod === 'email') {
+      if (!recipientEmail) {
+        setMessage({ text: 'Recipient email is required.', type: 'error' });
+        return;
+      }
+      recipient = recipientEmail;
+    } else {
+      if (!recipientPhone) {
+        setMessage({ text: 'Recipient phone is required.', type: 'error' });
+        return;
+      }
+      // Format Ethiopian phone: strip prefix, pass raw digits — backend will format
+      let clean = recipientPhone.replace(/[^\d]/g, '');
+      if (clean.startsWith('0')) clean = clean.slice(1);
+      if (clean.startsWith('251')) clean = clean.slice(3);
+      if (clean.length < 9) {
+        setMessage({ text: 'Enter a valid 9-digit phone number.', type: 'error' });
+        return;
+      }
+      recipient = clean; // backend will prepend +251
+    }
+    if (transferAmount <= 0) {
+      setMessage({ text: 'Amount must be positive.', type: 'error' });
+      return;
+    }
+    setLoading(true);
+    setMessage(null);
+    try {
+      const res = await walletApi.transfer(recipient, transferAmount);
+      setBalance(res.data.balance);
+      setMessage({ text: `${transferAmount} ETB sent successfully!`, type: 'success' });
+      setRecipientEmail('');
+      setRecipientPhone('');
+      setTimeout(() => {
+        onClose();
+        setMessage(null);
+      }, 1800);
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        'Transfer failed.';
+      setMessage({ text: msg, type: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div 
       className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-start justify-center z-50 p-4 overflow-y-auto"
@@ -65,14 +119,23 @@ function DepositModal({ isOpen, onClose }: DepositModalProps) {
         className="bg-slate-900 border border-slate-700/60 rounded-3xl p-6 w-full max-w-sm shadow-2xl relative animate-scale-up my-8 sm:my-16"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Header */}
         <div className="flex items-center justify-between mb-5 border-b border-slate-700/50 pb-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-xl">
-              💰
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xl ${
+              tab === 'deposit'
+                ? 'bg-emerald-500/10 border border-emerald-500/20'
+                : 'bg-violet-500/10 border border-violet-500/20'
+            }`}>
+              {tab === 'deposit' ? '💰' : '💸'}
             </div>
             <div>
-              <h3 className="text-lg font-bold text-white leading-tight">Deposit Funds</h3>
-              <p className="text-[10px] sm:text-xs text-slate-400">Add chips instantly</p>
+              <h3 className="text-lg font-bold text-white leading-tight">
+                {tab === 'deposit' ? 'Deposit Funds' : 'Transfer Funds'}
+              </h3>
+              <p className="text-[10px] sm:text-xs text-slate-400">
+                {tab === 'deposit' ? 'Add chips instantly' : 'Send ETB to another player'}
+              </p>
             </div>
           </div>
           <button
@@ -83,50 +146,177 @@ function DepositModal({ isOpen, onClose }: DepositModalProps) {
           </button>
         </div>
 
-        <div className="space-y-4">
-          <div className="grid grid-cols-4 gap-1.5">
-            {[50, 100, 200, 500].map((amt) => (
+        {/* Tab switcher */}
+        <div className="flex bg-slate-800/60 p-1.5 rounded-xl border border-slate-700/40 mb-5">
+          <button
+            type="button"
+            onClick={() => { setTab('deposit'); setMessage(null); }}
+            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+              tab === 'deposit'
+                ? 'bg-emerald-600 text-white shadow-md'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            💰 Deposit
+          </button>
+          <button
+            type="button"
+            onClick={() => { setTab('transfer'); setMessage(null); }}
+            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+              tab === 'transfer'
+                ? 'bg-violet-600 text-white shadow-md'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            💸 Transfer
+          </button>
+        </div>
+
+        {/* Deposit panel */}
+        {tab === 'deposit' && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-4 gap-1.5">
+              {[50, 100, 200, 500].map((amt) => (
+                <button
+                  key={amt}
+                  onClick={() => setDepositAmount(amt)}
+                  className={`text-xs py-2 rounded-xl border transition-all font-bold cursor-pointer ${
+                    depositAmount === amt
+                      ? 'bg-emerald-500 border-emerald-400 text-slate-950'
+                      : 'bg-slate-800 border-slate-700/50 text-slate-300 hover:border-emerald-500'
+                  }`}
+                >
+                  {amt} ETB
+                </button>
+              ))}
+            </div>
+
+            <div className="relative">
+              <input
+                type="number"
+                value={depositAmount}
+                min={1}
+                onChange={(e) => setDepositAmount(Math.max(1, Number(e.target.value)))}
+                className="w-full bg-slate-800 border border-slate-700/60 rounded-2xl pl-4 pr-12 py-3 text-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+              />
+              <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-semibold">ETB</span>
+            </div>
+
+            <button
+              onClick={handleDeposit}
+              disabled={loading}
+              className="w-full py-3.5 rounded-2xl text-sm font-extrabold bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 transition-all shadow-lg shadow-emerald-950/50 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
+            >
+              {loading ? 'Processing…' : `Confirm ${depositAmount} ETB Deposit`}
+            </button>
+          </div>
+        )}
+
+        {/* Transfer panel */}
+        {tab === 'transfer' && (
+          <div className="space-y-4">
+            {/* Recipient method sub-tabs */}
+            <div className="flex bg-slate-800/80 p-1 rounded-xl border border-slate-700/40">
               <button
-                key={amt}
-                onClick={() => setDepositAmount(amt)}
-                className={`text-xs py-2 rounded-xl border transition-all font-bold cursor-pointer ${
-                  depositAmount === amt
-                    ? 'bg-emerald-500 border-emerald-400 text-slate-950'
-                    : 'bg-slate-800 border-slate-700/50 text-slate-300 hover:border-emerald-500'
+                type="button"
+                onClick={() => { setTransferMethod('email'); setMessage(null); }}
+                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  transferMethod === 'email'
+                    ? 'bg-violet-600 text-white shadow'
+                    : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
-                {amt} ETB
+                ✉️ By Email
               </button>
-            ))}
+              <button
+                type="button"
+                onClick={() => { setTransferMethod('phone'); setMessage(null); }}
+                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  transferMethod === 'phone'
+                    ? 'bg-violet-600 text-white shadow'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                📱 By Phone
+              </button>
+            </div>
+
+            {/* Recipient input */}
+            {transferMethod === 'email' ? (
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 mb-1.5">Recipient Email</label>
+                <input
+                  type="email"
+                  value={recipientEmail}
+                  onChange={(e) => setRecipientEmail(e.target.value)}
+                  placeholder="friend@example.com"
+                  className="w-full bg-slate-800 border border-slate-700/60 rounded-2xl px-4 py-3 text-white text-sm font-semibold placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-violet-500 transition-all"
+                />
+              </div>
+            ) : (
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 mb-1.5">Recipient Phone</label>
+                <div className="flex">
+                  <span className="inline-flex items-center px-3 rounded-l-2xl border border-r-0 border-slate-700/60 bg-slate-700/40 text-slate-400 text-sm font-bold select-none">
+                    +251
+                  </span>
+                  <input
+                    type="tel"
+                    value={recipientPhone}
+                    onChange={(e) => setRecipientPhone(e.target.value)}
+                    placeholder="912345678"
+                    className="w-full bg-slate-800 border border-slate-700/60 rounded-r-2xl px-4 py-3 text-white text-sm font-semibold placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-violet-500 transition-all"
+                  />
+                </div>
+              </div>
+            )}
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 mb-1.5">Amount</label>
+              <div className="grid grid-cols-4 gap-1.5 mb-2">
+                {[20, 50, 100, 200].map((amt) => (
+                  <button
+                    key={amt}
+                    onClick={() => setTransferAmount(amt)}
+                    className={`text-xs py-2 rounded-xl border transition-all font-bold cursor-pointer ${
+                      transferAmount === amt
+                        ? 'bg-violet-500 border-violet-400 text-white'
+                        : 'bg-slate-800 border-slate-700/50 text-slate-300 hover:border-violet-500'
+                    }`}
+                  >
+                    {amt} ETB
+                  </button>
+                ))}
+              </div>
+              <div className="relative">
+                <input
+                  type="number"
+                  value={transferAmount}
+                  min={1}
+                  onChange={(e) => setTransferAmount(Math.max(1, Number(e.target.value)))}
+                  className="w-full bg-slate-800 border border-slate-700/60 rounded-2xl pl-4 pr-12 py-3 text-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-violet-500 transition-all"
+                />
+                <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-semibold">ETB</span>
+              </div>
+            </div>
+
+            <button
+              onClick={handleTransfer}
+              disabled={loading}
+              className="w-full py-3.5 rounded-2xl text-sm font-extrabold bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white transition-all shadow-lg shadow-violet-950/50 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
+            >
+              {loading ? 'Sending…' : `Send ${transferAmount} ETB`}
+            </button>
           </div>
+        )}
 
-          <div className="relative">
-            <input
-              type="number"
-              value={depositAmount}
-              min={1}
-              onChange={(e) => setDepositAmount(Math.max(1, Number(e.target.value)))}
-              className="w-full bg-slate-800 border border-slate-700/60 rounded-2xl pl-4 pr-12 py-3 text-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
-            />
-            <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-semibold">ETB</span>
-          </div>
-
-          <button
-            onClick={handleDeposit}
-            disabled={loading}
-            className="w-full py-3.5 rounded-2xl text-sm font-extrabold bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 transition-all shadow-lg shadow-emerald-950/50 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
-          >
-            {loading ? 'Processing…' : `Confirm ${depositAmount} ETB Deposit`}
-          </button>
-
-          {message && (
-            <p className={`text-xs text-center font-semibold animate-pulse ${
-              message.type === 'success' ? 'text-emerald-400' : 'text-red-400'
-            }`}>
-              {message.text}
-            </p>
-          )}
-        </div>
+        {message && (
+          <p className={`text-xs text-center font-semibold mt-3 animate-pulse ${
+            message.type === 'success' ? 'text-emerald-400' : 'text-red-400'
+          }`}>
+            {message.text}
+          </p>
+        )}
       </div>
     </div>
   );
@@ -254,8 +444,9 @@ interface TransactionHistoryModalProps {
 
 interface Transaction {
   id: string;
-  type: 'DEPOSIT' | 'WITHDRAW';
+  type: 'DEPOSIT' | 'WITHDRAW' | 'TRANSFER_SENT' | 'TRANSFER_RECEIVED';
   amount: number;
+  description?: string;
   createdAt: string;
 }
 
@@ -316,7 +507,7 @@ function TransactionHistoryModal({ isOpen, onClose }: TransactionHistoryModalPro
             </div>
             <div>
               <h3 className="text-lg font-bold text-white leading-tight">Transactions</h3>
-              <p className="text-[10px] sm:text-xs text-slate-400">Your recent deposits & withdrawals</p>
+              <p className="text-[10px] sm:text-xs text-slate-400">Your recent deposits & transfers</p>
             </div>
           </div>
           <button
@@ -349,37 +540,48 @@ function TransactionHistoryModal({ isOpen, onClose }: TransactionHistoryModalPro
 
           {!loading && !error && transactions.length > 0 && (
             <div className="max-h-[320px] overflow-y-auto pr-1 space-y-2">
-              {transactions.map((tx) => (
-                <div 
-                  key={tx.id} 
-                  className="flex items-center justify-between p-3 rounded-2xl bg-slate-950/40 border border-slate-800/85 hover:border-slate-700/40 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black ${
-                      tx.type === 'DEPOSIT' 
-                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
-                        : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
-                    }`}>
-                      {tx.type === 'DEPOSIT' ? 'IN' : 'OUT'}
+              {transactions.map((tx) => {
+                const isIncoming = tx.type === 'DEPOSIT' || tx.type === 'TRANSFER_RECEIVED';
+                const typeLabel = tx.type === 'DEPOSIT'
+                  ? 'Deposit Funds'
+                  : tx.type === 'WITHDRAW'
+                  ? 'Withdraw Funds'
+                  : tx.type === 'TRANSFER_SENT'
+                  ? 'Transfer Sent'
+                  : 'Transfer Received';
+
+                return (
+                  <div 
+                    key={tx.id} 
+                    className="flex items-center justify-between p-3 rounded-2xl bg-slate-950/40 border border-slate-800/85 hover:border-slate-700/40 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black ${
+                        isIncoming 
+                          ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
+                          : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                      }`}>
+                        {isIncoming ? 'IN' : 'OUT'}
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-white">
+                          {tx.description || typeLabel}
+                        </p>
+                        <p className="text-[9px] sm:text-[10px] text-slate-500 font-semibold font-mono">
+                          {formatDate(tx.createdAt)}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-xs font-bold text-white">
-                        {tx.type === 'DEPOSIT' ? 'Deposit Funds' : 'Withdraw Funds'}
-                      </p>
-                      <p className="text-[9px] sm:text-[10px] text-slate-500 font-semibold font-mono">
-                        {formatDate(tx.createdAt)}
+                    <div className="text-right">
+                      <p className={`text-xs font-black font-mono ${
+                        isIncoming ? 'text-emerald-400' : 'text-blue-400'
+                      }`}>
+                        {isIncoming ? '+' : '-'}{tx.amount} ETB
                       </p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className={`text-xs font-black font-mono ${
-                      tx.type === 'DEPOSIT' ? 'text-emerald-400' : 'text-blue-400'
-                    }`}>
-                      {tx.type === 'DEPOSIT' ? '+' : '-'}{tx.amount} ETB
-                    </p>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

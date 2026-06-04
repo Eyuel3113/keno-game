@@ -6,6 +6,7 @@ import { authApi } from '../api';
 
 export default function RegisterPage() {
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -24,8 +25,25 @@ export default function RegisterPage() {
       toast('Passwords do not match.', 'warning');
       return;
     }
+
+    let formattedPhone = undefined;
+    if (phone) {
+      let cleanPhone = phone.replace(/[^\d]/g, '');
+      if (cleanPhone.startsWith('0')) {
+        cleanPhone = cleanPhone.slice(1);
+      }
+      if (cleanPhone.startsWith('251')) {
+        cleanPhone = cleanPhone.slice(3);
+      }
+      if (cleanPhone.length < 9) {
+        toast('Please enter a valid 9-digit phone number.', 'warning');
+        return;
+      }
+      formattedPhone = `+251${cleanPhone}`;
+    }
+
     try {
-      await register(email, password, toast);
+      await register(email, password, formattedPhone, toast);
       setSubmitted(true);
     } catch {
       // error already shown via toast
@@ -125,6 +143,25 @@ export default function RegisterPage() {
                   placeholder="you@example.com"
                   className="w-full bg-slate-700/60 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all"
                 />
+              </div>
+
+              <div>
+                <label htmlFor="reg-phone" className="block text-sm font-medium text-slate-300 mb-2">
+                  Phone Number (Optional)
+                </label>
+                <div className="flex">
+                  <span className="inline-flex items-center px-4 rounded-l-xl border border-r-0 border-slate-600 bg-slate-700/40 text-slate-400 text-sm font-semibold select-none">
+                    +251
+                  </span>
+                  <input
+                    id="reg-phone"
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="912345678"
+                    className="w-full bg-slate-700/60 border border-slate-600 rounded-r-xl px-4 py-3 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all"
+                  />
+                </div>
               </div>
 
               <div>

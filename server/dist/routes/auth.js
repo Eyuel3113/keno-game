@@ -6,59 +6,26 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
+const crypto_1 = __importDefault(require("crypto"));
 const db_1 = __importDefault(require("../config/db"));
+const emailService_1 = require("../services/emailService");
 const router = (0, express_1.Router)();
-/**
- * @swagger
- * tags:
- *   name: Auth
- *   description: User registration and login
- */
-/**
- * @swagger
- * /api/auth/register:
- *   post:
- *     summary: Register a new user
- *     tags: [Auth]
- *     security: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [email, password]
- *             properties:
- *               email:
- *                 type: string
- *                 format: email
- *                 example: player@keno.com
- *               password:
- *                 type: string
- *                 minLength: 6
- *                 example: secret123
- *     responses:
- *       201:
- *         description: User created successfully. Returns JWT and user info with starting balance of 1000 chips.
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/AuthResponse'
- *       400:
- *         description: Missing email or password
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *       409:
- *         description: Email already registered
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- */
+function formatEthiopianPhoneNumber(phone) {
+    let clean = phone.replace(/[^\d+]/g, '');
+    if (clean.startsWith('0')) {
+        clean = '+251' + clean.slice(1);
+    }
+    else if (clean.startsWith('251') && !clean.startsWith('+')) {
+        clean = '+' + clean;
+    }
+    else if (!clean.startsWith('+') && /^[79]/.test(clean)) {
+        clean = '+251' + clean;
+    }
+    return clean;
+}
+// ─── Register ─────────────────────────────────────────────────────────────────
 router.post('/register', async (req, res) => {
-    const { email, password } = req.body;
+    const { email, password, phoneNumber } = req.body;
     if (!email || !password) {
         return res.status(400).json({ message: 'Email and password are required' });
     }
@@ -67,19 +34,31 @@ router.post('/register', async (req, res) => {
         if (existing) {
             return res.status(409).json({ message: 'User already exists' });
         }
+        let formattedPhone = null;
+        if (phoneNumber) {
+            formattedPhone = formatEthiopianPhoneNumber(phoneNumber);
+            const existingPhone = await db_1.default.user.findUnique({ where: { phoneNumber: formattedPhone } });
+            if (existingPhone) {
+                return res.status(409).json({ message: 'Phone number already registered' });
+            }
+        }
         const hashedPassword = await bcryptjs_1.default.hash(password, 10);
-        const user = await db_1.default.user.create({
+        const verifyToken = crypto_1.default.randomBytes(32).toString('hex');
+        const verifyExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+        await db_1.default.user.create({
             data: {
                 email,
+                phoneNumber: formattedPhone,
                 password: hashedPassword,
-                wallet: { create: { balance: 1000 } },
+                verifyToken,
+                verifyExpires,
+                wallet: { create: { balance: 50 } },
             },
-            include: { wallet: true },
         });
-        const token = jsonwebtoken_1.default.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET || 'secret', { expiresIn: '7d' });
+        // Send verification email (non-blocking — don't fail registration if email fails)
+        (0, emailService_1.sendVerificationEmail)(email, verifyToken).catch((err) => console.error('[Email] Failed to send verification email:', err));
         return res.status(201).json({
-            token,
-            user: { id: user.id, email: user.email, balance: user.wallet?.balance },
+            message: 'Registration successful. Please check your email to verify your account.',
         });
     }
     catch (err) {
@@ -87,48 +66,21 @@ router.post('/register', async (req, res) => {
         return res.status(500).json({ message: 'Server error' });
     }
 });
-/**
- * @swagger
- * /api/auth/login:
- *   post:
- *     summary: Login with email and password
- *     tags: [Auth]
- *     security: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [email, password]
- *             properties:
- *               email:
- *                 type: string
- *                 format: email
- *                 example: player@keno.com
- *               password:
- *                 type: string
- *                 example: secret123
- *     responses:
- *       200:
- *         description: Login successful. Returns JWT token and user info.
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/AuthResponse'
- *       400:
- *         description: Missing email or password
- *       401:
- *         description: Invalid credentials
- */
+// ─── Login ────────────────────────────────────────────────────────────────────
 router.post('/login', async (req, res) => {
-    const { email, password } = req.body;
-    if (!email || !password) {
-        return res.status(400).json({ message: 'Email and password are required' });
+    const { email, identifier, password } = req.body;
+    const loginId = identifier || email;
+    if (!loginId || !password) {
+        return res.status(400).json({ message: 'Identifier and password are required' });
     }
     try {
-        const user = await db_1.default.user.findUnique({
-            where: { email },
+        let queryCond = { email: loginId };
+        if (!loginId.includes('@')) {
+            const formattedPhone = formatEthiopianPhoneNumber(loginId);
+            queryCond = { phoneNumber: formattedPhone };
+        }
+        const user = await db_1.default.user.findFirst({
+            where: queryCond,
             include: { wallet: true },
         });
         if (!user) {
@@ -138,11 +90,133 @@ router.post('/login', async (req, res) => {
         if (!isMatch) {
             return res.status(401).json({ message: 'Invalid credentials' });
         }
+        if (!user.emailVerified) {
+            return res.status(403).json({
+                message: 'Please verify your email before signing in. Check your inbox for the verification link.',
+            });
+        }
         const token = jsonwebtoken_1.default.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET || 'secret', { expiresIn: '7d' });
         return res.json({
             token,
-            user: { id: user.id, email: user.email, balance: user.wallet?.balance },
+            user: { id: user.id, email: user.email, phoneNumber: user.phoneNumber, balance: user.wallet?.balance },
         });
+    }
+    catch (err) {
+        console.error(err);
+        return res.status(500).json({ message: 'Server error' });
+    }
+});
+// ─── Verify Email ─────────────────────────────────────────────────────────────
+router.get('/verify-email', async (req, res) => {
+    const { token } = req.query;
+    if (!token || typeof token !== 'string') {
+        return res.status(400).json({ message: 'Invalid token' });
+    }
+    try {
+        const user = await db_1.default.user.findFirst({
+            where: { verifyToken: token },
+        });
+        if (!user) {
+            return res.status(400).json({ message: 'Invalid or expired verification link.' });
+        }
+        if (user.verifyExpires && user.verifyExpires < new Date()) {
+            return res.status(400).json({ message: 'Verification link has expired. Please register again.' });
+        }
+        await db_1.default.user.update({
+            where: { id: user.id },
+            data: {
+                emailVerified: true,
+                verifyToken: null,
+                verifyExpires: null,
+            },
+        });
+        return res.json({ message: 'Email verified successfully! You can now sign in.' });
+    }
+    catch (err) {
+        console.error(err);
+        return res.status(500).json({ message: 'Server error' });
+    }
+});
+// ─── Forgot Password ──────────────────────────────────────────────────────────
+router.post('/forgot-password', async (req, res) => {
+    const { email } = req.body;
+    if (!email) {
+        return res.status(400).json({ message: 'Email is required' });
+    }
+    // Always return 200 to avoid revealing which emails are registered
+    const SAFE_RESPONSE = { message: 'If that email is registered, a reset link has been sent.' };
+    try {
+        const user = await db_1.default.user.findUnique({ where: { email } });
+        if (!user) {
+            return res.json(SAFE_RESPONSE);
+        }
+        const resetToken = crypto_1.default.randomBytes(32).toString('hex');
+        const resetExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+        await db_1.default.user.update({
+            where: { id: user.id },
+            data: { resetToken, resetExpires },
+        });
+        (0, emailService_1.sendPasswordResetEmail)(email, resetToken).catch((err) => console.error('[Email] Failed to send reset email:', err));
+        return res.json(SAFE_RESPONSE);
+    }
+    catch (err) {
+        console.error(err);
+        return res.status(500).json({ message: 'Server error' });
+    }
+});
+// ─── Reset Password ───────────────────────────────────────────────────────────
+router.post('/reset-password', async (req, res) => {
+    const { token, password } = req.body;
+    if (!token || !password) {
+        return res.status(400).json({ message: 'Token and new password are required' });
+    }
+    if (password.length < 6) {
+        return res.status(400).json({ message: 'Password must be at least 6 characters' });
+    }
+    try {
+        const user = await db_1.default.user.findFirst({ where: { resetToken: token } });
+        if (!user) {
+            return res.status(400).json({ message: 'Invalid or expired reset link.' });
+        }
+        if (user.resetExpires && user.resetExpires < new Date()) {
+            return res.status(400).json({ message: 'Reset link has expired. Please request a new one.' });
+        }
+        const hashedPassword = await bcryptjs_1.default.hash(password, 10);
+        await db_1.default.user.update({
+            where: { id: user.id },
+            data: {
+                password: hashedPassword,
+                resetToken: null,
+                resetExpires: null,
+            },
+        });
+        return res.json({ message: 'Password reset successfully! You can now sign in.' });
+    }
+    catch (err) {
+        console.error(err);
+        return res.status(500).json({ message: 'Server error' });
+    }
+});
+// ─── Resend Verification Email ────────────────────────────────────────────────
+router.post('/resend-verification', async (req, res) => {
+    const { email } = req.body;
+    if (!email) {
+        return res.status(400).json({ message: 'Email is required' });
+    }
+    try {
+        const user = await db_1.default.user.findUnique({ where: { email } });
+        if (!user || user.emailVerified) {
+            // Don't reveal details
+            return res.json({ message: 'If that account exists and is unverified, a new link has been sent.' });
+        }
+        const verifyToken = crypto_1.default.randomBytes(32).toString('hex');
+        const verifyExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+        await db_1.default.user.update({
+            where: { id: user.id },
+            data: { verifyToken, verifyExpires },
+        });
+        (0, emailService_1.sendVerificationEmail)(email, verifyToken).catch((err) => console.error('[Email] Failed to resend verification email:', err));
+        return res.json({ message: 'If that account exists and is unverified, a new link has been sent.' });
     }
     catch (err) {
         console.error(err);

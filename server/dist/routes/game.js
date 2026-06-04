@@ -6,8 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const auth_1 = require("../middleware/auth");
 const db_1 = __importDefault(require("../config/db"));
-const gameEngine_1 = require("../services/gameEngine");
-const payoutTable_1 = require("../services/payoutTable");
+const gameSocket_1 = require("../socket/gameSocket");
 const router = (0, express_1.Router)();
 /**
  * @swagger
@@ -20,16 +19,7 @@ const router = (0, express_1.Router)();
  * /api/game/bet:
  *   post:
  *     summary: Place a Keno bet
- *     description: |
- *       Pick 1–10 numbers from 1–80 and place a bet. The server immediately draws 20 numbers,
- *       calculates hits and payout, updates your wallet, and returns the full result.
- *
- *       **Payout multipliers (picks × hits):**
- *       | Picks | 0 hits | 1 hit | 2 hits | 3 hits | 4 hits | 5 hits | 6 hits | 7 hits | 8 hits | 9 hits | 10 hits |
- *       |-------|--------|-------|--------|--------|--------|--------|--------|--------|--------|--------|---------|
- *       | 1 | 0× | 3× | — | — | — | — | — | — | — | — | — |
- *       | 5 | 0× | 0× | 0× | 3× | 12× | 120× | — | — | — | — | — |
- *       | 10 | 0× | 0× | 0× | 0× | 0× | 2× | 20× | 100× | 500× | 10000× | 100000× |
+ *     description: Pick 1–10 numbers from 1–80 and place a bet on the current active round.
  *     tags: [Game]
  *     security:
  *       - bearerAuth: []
@@ -41,17 +31,9 @@ const router = (0, express_1.Router)();
  *             $ref: '#/components/schemas/BetRequest'
  *     responses:
  *       200:
- *         description: Bet placed and result calculated
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/BetResponse'
+ *         description: Bet placed successfully on current active round
  *       400:
  *         description: Invalid picks or amount, or insufficient balance
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
  *       401:
  *         description: Unauthorized
  */
@@ -70,6 +52,10 @@ router.post('/bet', auth_1.authenticate, async (req, res) => {
     if (invalidPick) {
         return res.status(400).json({ message: 'picks must be integers between 1 and 80' });
     }
+    const roundId = req.body.roundId || (0, gameSocket_1.getCurrentRoundId)();
+    if (!roundId) {
+        return res.status(400).json({ message: 'No active game round at the moment' });
+    }
     try {
         const wallet = await db_1.default.wallet.findUnique({ where: { userId } });
         if (!wallet)
@@ -77,25 +63,35 @@ router.post('/bet', auth_1.authenticate, async (req, res) => {
         if (wallet.balance < amount) {
             return res.status(400).json({ message: 'Insufficient balance' });
         }
-        const drawnNumbers = (0, gameEngine_1.drawNumbers)();
-        const round = await db_1.default.gameRound.create({
-            data: { drawnNumbers, status: 'COMPLETED', endedAt: new Date() },
-        });
-        const hits = (0, gameEngine_1.calculateHits)(picks, drawnNumbers);
-        const payout = (0, payoutTable_1.calculatePayout)(picks.length, hits, amount);
-        const newBalance = wallet.balance - amount + payout;
+        const round = await db_1.default.gameRound.findUnique({ where: { id: roundId } });
+        if (!round) {
+            return res.status(404).json({ message: 'Active game round not found' });
+        }
+        if (round.status !== 'PENDING') {
+            return res.status(400).json({ message: 'Betting is closed for this round' });
+        }
+        const newBalance = wallet.balance - amount;
         const [bet, updatedWallet] = await db_1.default.$transaction([
-            db_1.default.bet.create({ data: { amount, picks, hits, payout, userId, roundId: round.id } }),
+            db_1.default.bet.create({
+                data: {
+                    amount,
+                    picks,
+                    userId,
+                    roundId,
+                    hits: 0,
+                    payout: 0,
+                },
+            }),
             db_1.default.wallet.update({ where: { userId }, data: { balance: newBalance } }),
         ]);
         return res.json({
             betId: bet.id,
-            roundId: round.id,
+            roundId,
             picks,
-            drawnNumbers,
-            hits,
-            payout,
             newBalance: updatedWallet.balance,
+            balance: updatedWallet.balance,
+            payout: 0,
+            hits: 0,
         });
     }
     catch (err) {
@@ -113,27 +109,6 @@ router.post('/bet', auth_1.authenticate, async (req, res) => {
  *     responses:
  *       200:
  *         description: Latest round details
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 id:
- *                   type: string
- *                   format: uuid
- *                 drawnNumbers:
- *                   type: array
- *                   items:
- *                     type: integer
- *                 status:
- *                   type: string
- *                   example: COMPLETED
- *                 createdAt:
- *                   type: string
- *                   format: date-time
- *                 endedAt:
- *                   type: string
- *                   format: date-time
  */
 router.get('/draw', async (_req, res) => {
     try {

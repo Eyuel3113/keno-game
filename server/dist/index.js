@@ -15,6 +15,7 @@ const wallet_1 = __importDefault(require("./routes/wallet"));
 const history_1 = __importDefault(require("./routes/history"));
 const gameSocket_1 = require("./socket/gameSocket");
 const swagger_1 = require("./config/swagger");
+const db_1 = __importDefault(require("./config/db"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 const server = http_1.default.createServer(app);
@@ -38,5 +39,15 @@ app.use('/api/history', history_1.default);
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
+    // Keep-alive ping every 4 minutes to prevent Neon free-tier from suspending
+    setInterval(async () => {
+        try {
+            await db_1.default.$queryRaw `SELECT 1`;
+            console.log('[DB] Keep-alive ping OK');
+        }
+        catch (e) {
+            console.warn('[DB] Keep-alive ping failed — database may be suspended');
+        }
+    }, 4 * 60 * 1000);
 });
 //# sourceMappingURL=index.js.map

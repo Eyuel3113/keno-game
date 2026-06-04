@@ -12,11 +12,11 @@ export const useAuth = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const login = async (email: string, password: string, toastFn?: ToastFn) => {
+  const login = async (identifier: string, password: string, toastFn?: ToastFn) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await authApi.login(email, password);
+      const res = await authApi.login(identifier, password);
       const { token, user, balance } = res.data;
       setToken(token);
       setUser(user);
@@ -34,11 +34,11 @@ export const useAuth = () => {
     }
   };
 
-  const register = async (email: string, password: string, toastFn?: ToastFn) => {
+  const register = async (email: string, password: string, phoneNumber?: string, toastFn?: ToastFn) => {
     setLoading(true);
     setError(null);
     try {
-      await authApi.register(email, password);
+      await authApi.register(email, password, phoneNumber);
       // Don't navigate — caller will show "check your email" UI
     } catch (err: unknown) {
       const msg =

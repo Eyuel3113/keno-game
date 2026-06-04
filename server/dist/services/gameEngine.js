@@ -8,7 +8,7 @@ const drawNumbers = () => {
         const j = Math.floor(Math.random() * (i + 1));
         [pool[i], pool[j]] = [pool[j], pool[i]];
     }
-    return pool.slice(0, 20).sort((a, b) => a - b);
+    return pool.slice(0, 20);
 };
 exports.drawNumbers = drawNumbers;
 const calculateHits = (picks, drawn) => {

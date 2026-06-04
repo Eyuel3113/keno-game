@@ -24,14 +24,6 @@ const router = (0, express_1.Router)();
  *     responses:
  *       200:
  *         description: List of past bets
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/HistoryItem'
- *       401:
- *         description: Unauthorized
  */
 router.get('/', auth_1.authenticate, async (req, res) => {
     const userId = req.user?.id;
@@ -43,14 +35,16 @@ router.get('/', auth_1.authenticate, async (req, res) => {
             orderBy: { createdAt: 'desc' },
             take: 50,
             include: {
-                round: { select: { drawnNumbers: true, createdAt: true } },
+                round: { select: { id: true, status: true, drawnNumbers: true, createdAt: true } },
             },
         });
         const result = bets.map((bet) => ({
             id: bet.id,
             amount: bet.amount,
             picks: bet.picks,
+            roundId: bet.roundId,
             drawnNumbers: bet.round.drawnNumbers,
+            roundStatus: bet.round.status,
             hits: bet.hits,
             payout: bet.payout,
             profit: bet.payout - bet.amount,

@@ -10,6 +10,7 @@ datasource db {
 model User {
   id             String    @id @default(uuid())
   email          String    @unique
+  phoneNumber    String?   @unique
   password       String
   emailVerified  Boolean   @default(false)
   verifyToken    String?
@@ -55,10 +56,11 @@ model Bet {
 }
 
 model Transaction {
-  id        String   @id @default(uuid())
-  type      String   // DEPOSIT, WITHDRAW
-  amount    Float
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  createdAt DateTime @default(now())
+  id          String   @id @default(uuid())
+  type        String   // DEPOSIT, WITHDRAW, TRANSFER_SENT, TRANSFER_RECEIVED
+  amount      Float
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  description String?
+  createdAt   DateTime @default(now())
 }

@@ -4,7 +4,9 @@ import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../context/ToastContext';
 
 export default function LoginPage() {
+  const [loginMethod, setLoginMethod] = useState<'email' | 'phone'>('email');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const { login, loading } = useAuth();
@@ -24,7 +26,22 @@ export default function LoginPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    login(email, password, toast);
+    let identifier = email;
+    if (loginMethod === 'phone') {
+      let cleanPhone = phone.replace(/[^\d]/g, '');
+      if (cleanPhone.startsWith('0')) {
+        cleanPhone = cleanPhone.slice(1);
+      }
+      if (cleanPhone.startsWith('251')) {
+        cleanPhone = cleanPhone.slice(3);
+      }
+      if (!cleanPhone || cleanPhone.length < 9) {
+        toast('Please enter a valid 9-digit phone number.', 'warning');
+        return;
+      }
+      identifier = `+251${cleanPhone}`;
+    }
+    login(identifier, password, toast);
   };
 
   return (
@@ -48,22 +65,70 @@ export default function LoginPage() {
 
         {/* Card */}
         <div className="bg-slate-800/70 backdrop-blur-md border border-slate-700/50 rounded-2xl shadow-2xl p-8">
+          {/* Method Selector Tabs */}
+          <div className="flex bg-slate-900/50 p-1.5 rounded-xl border border-slate-700/40 mb-6">
+            <button
+              type="button"
+              onClick={() => setLoginMethod('email')}
+              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                loginMethod === 'email'
+                  ? 'bg-violet-600/80 text-white shadow-md'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              Email Login
+            </button>
+            <button
+              type="button"
+              onClick={() => setLoginMethod('phone')}
+              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                loginMethod === 'phone'
+                  ? 'bg-violet-600/80 text-white shadow-md'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              Mobile Login
+            </button>
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label htmlFor="login-email" className="block text-sm font-medium text-slate-300 mb-2">
-                Email Address
-              </label>
-              <input
-                id="login-email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                autoComplete="email"
-                placeholder="you@example.com"
-                className="w-full bg-slate-700/60 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all"
-              />
-            </div>
+            {loginMethod === 'email' ? (
+              <div>
+                <label htmlFor="login-email" className="block text-sm font-medium text-slate-300 mb-2">
+                  Email Address
+                </label>
+                <input
+                  id="login-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  autoComplete="email"
+                  placeholder="you@example.com"
+                  className="w-full bg-slate-700/60 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all"
+                />
+              </div>
+            ) : (
+              <div>
+                <label htmlFor="login-phone" className="block text-sm font-medium text-slate-300 mb-2">
+                  Phone Number
+                </label>
+                <div className="flex">
+                  <span className="inline-flex items-center px-4 rounded-l-xl border border-r-0 border-slate-600 bg-slate-700/40 text-slate-400 text-sm font-semibold select-none">
+                    +251
+                  </span>
+                  <input
+                    id="login-phone"
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    required
+                    placeholder="912345678"
+                    className="w-full bg-slate-700/60 border border-slate-600 rounded-r-xl px-4 py-3 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all"
+                  />
+                </div>
+              </div>
+            )}
 
             <div>
               <div className="flex items-center justify-between mb-2">
