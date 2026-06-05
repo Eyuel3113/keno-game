@@ -4,6 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
+const auth_1 = require("../middleware/auth");
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const crypto_1 = __importDefault(require("crypto"));
@@ -217,6 +218,84 @@ router.post('/resend-verification', async (req, res) => {
         });
         (0, emailService_1.sendVerificationEmail)(email, verifyToken).catch((err) => console.error('[Email] Failed to resend verification email:', err));
         return res.json({ message: 'If that account exists and is unverified, a new link has been sent.' });
+    }
+    catch (err) {
+        console.error(err);
+        return res.status(500).json({ message: 'Server error' });
+    }
+});
+// ─── Change Email ─────────────────────────────────────────────────────────────
+router.post('/change-email', auth_1.authenticate, async (req, res) => {
+    const userId = req.user?.id;
+    const { currentPassword, newEmail } = req.body;
+    if (!userId) {
+        return res.status(401).json({ message: 'Unauthorized' });
+    }
+    if (!currentPassword || !newEmail) {
+        return res.status(400).json({ message: 'Current password and new email are required' });
+    }
+    try {
+        const user = await db_1.default.user.findUnique({ where: { id: userId } });
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        const isMatch = await bcryptjs_1.default.compare(currentPassword, user.password);
+        if (!isMatch) {
+            return res.status(400).json({ message: 'Invalid current password' });
+        }
+        const existing = await db_1.default.user.findUnique({ where: { email: newEmail } });
+        if (existing) {
+            return res.status(409).json({ message: 'Email already in use' });
+        }
+        const verifyToken = crypto_1.default.randomBytes(32).toString('hex');
+        const verifyExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+        await db_1.default.user.update({
+            where: { id: userId },
+            data: {
+                email: newEmail,
+                emailVerified: false,
+                verifyToken,
+                verifyExpires,
+            },
+        });
+        (0, emailService_1.sendVerificationEmail)(newEmail, verifyToken).catch((err) => console.error('[Email] Failed to send verification email for email change:', err));
+        return res.json({ message: 'Email updated successfully. Please check your new email to verify it.' });
+    }
+    catch (err) {
+        console.error(err);
+        return res.status(500).json({ message: 'Server error' });
+    }
+});
+// ─── Change Password ──────────────────────────────────────────────────────────
+router.post('/change-password', auth_1.authenticate, async (req, res) => {
+    const userId = req.user?.id;
+    const { currentPassword, newPassword } = req.body;
+    if (!userId) {
+        return res.status(401).json({ message: 'Unauthorized' });
+    }
+    if (!currentPassword || !newPassword) {
+        return res.status(400).json({ message: 'Current password and new password are required' });
+    }
+    if (newPassword.length < 6) {
+        return res.status(400).json({ message: 'New password must be at least 6 characters long' });
+    }
+    try {
+        const user = await db_1.default.user.findUnique({ where: { id: userId } });
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        const isMatch = await bcryptjs_1.default.compare(currentPassword, user.password);
+        if (!isMatch) {
+            return res.status(400).json({ message: 'Invalid current password' });
+        }
+        const hashedPassword = await bcryptjs_1.default.hash(newPassword, 10);
+        await db_1.default.user.update({
+            where: { id: userId },
+            data: {
+                password: hashedPassword,
+            },
+        });
+        return res.json({ message: 'Password changed successfully.' });
     }
     catch (err) {
         console.error(err);

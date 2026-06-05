@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+﻿import { useState, useRef, useEffect } from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import GamePage from './pages/GamePage';
 import LoginPage from './pages/LoginPage';
@@ -7,7 +7,7 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import { useStore } from './store';
-import { walletApi } from './api';
+import { walletApi, authApi } from './api';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { token } = useStore();
@@ -28,12 +28,7 @@ interface DepositModalProps {
 
 function DepositModal({ isOpen, onClose }: DepositModalProps) {
   const { setBalance } = useStore();
-  const [tab, setTab] = useState<'deposit' | 'transfer'>('deposit');
-  const [transferMethod, setTransferMethod] = useState<'email' | 'phone'>('email');
   const [depositAmount, setDepositAmount] = useState(100);
-  const [recipientEmail, setRecipientEmail] = useState('');
-  const [recipientPhone, setRecipientPhone] = useState('');
-  const [transferAmount, setTransferAmount] = useState(50);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
@@ -60,6 +55,100 @@ function DepositModal({ isOpen, onClose }: DepositModalProps) {
       setLoading(false);
     }
   };
+
+  return (
+    <div 
+      className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-start justify-center z-50 p-4 overflow-y-auto"
+      onClick={onClose}
+    >
+      <div 
+        className="bg-slate-900 border border-slate-700/60 rounded-3xl p-6 w-full max-w-sm shadow-2xl relative animate-scale-up my-8 sm:my-16"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between mb-5 border-b border-slate-700/50 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-xl">
+              💰
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-white leading-tight">Deposit Funds</h3>
+              <p className="text-[10px] sm:text-xs text-slate-400">Add chips instantly</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center text-sm transition-colors cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Deposit panel */}
+        <div className="space-y-4">
+          <div className="grid grid-cols-4 gap-1.5">
+            {[50, 100, 200, 500].map((amt) => (
+              <button
+                key={amt}
+                onClick={() => setDepositAmount(amt)}
+                className={`text-xs py-2 rounded-xl border transition-all font-bold cursor-pointer ${
+                  depositAmount === amt
+                    ? 'bg-emerald-500 border-emerald-400 text-slate-950'
+                    : 'bg-slate-800 border-slate-700/50 text-slate-300 hover:border-emerald-500'
+                }`}
+              >
+                {amt} ETB
+              </button>
+            ))}
+          </div>
+
+          <div className="relative">
+            <input
+              type="number"
+              value={depositAmount}
+              min={1}
+              onChange={(e) => setDepositAmount(Math.max(1, Number(e.target.value)))}
+              className="w-full bg-slate-800 border border-slate-700/60 rounded-2xl pl-4 pr-12 py-3 text-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+            />
+            <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-semibold">ETB</span>
+          </div>
+
+          <button
+            onClick={handleDeposit}
+            disabled={loading}
+            className="w-full py-3.5 rounded-2xl text-sm font-extrabold bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 transition-all shadow-lg shadow-emerald-950/50 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
+          >
+            {loading ? 'Processing…' : `Confirm ${depositAmount} ETB Deposit`}
+          </button>
+        </div>
+
+        {message && (
+          <p className={`text-xs text-center font-semibold mt-3 animate-pulse ${
+            message.type === 'success' ? 'text-emerald-400' : 'text-red-400'
+          }`}>
+            {message.text}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+interface TransferModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+function TransferModal({ isOpen, onClose }: TransferModalProps) {
+  const { setBalance } = useStore();
+  const [transferMethod, setTransferMethod] = useState<'email' | 'phone'>('email');
+  const [recipientEmail, setRecipientEmail] = useState('');
+  const [recipientPhone, setRecipientPhone] = useState('');
+  const [transferAmount, setTransferAmount] = useState(50);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  if (!isOpen) return null;
 
   const handleTransfer = async () => {
     let recipient = '';
@@ -122,20 +211,12 @@ function DepositModal({ isOpen, onClose }: DepositModalProps) {
         {/* Header */}
         <div className="flex items-center justify-between mb-5 border-b border-slate-700/50 pb-4">
           <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xl ${
-              tab === 'deposit'
-                ? 'bg-emerald-500/10 border border-emerald-500/20'
-                : 'bg-violet-500/10 border border-violet-500/20'
-            }`}>
-              {tab === 'deposit' ? '💰' : '💸'}
+            <div className="w-10 h-10 rounded-full flex items-center justify-center text-xl bg-violet-500/10 border border-violet-500/20">
+              💸
             </div>
             <div>
-              <h3 className="text-lg font-bold text-white leading-tight">
-                {tab === 'deposit' ? 'Deposit Funds' : 'Transfer Funds'}
-              </h3>
-              <p className="text-[10px] sm:text-xs text-slate-400">
-                {tab === 'deposit' ? 'Add chips instantly' : 'Send ETB to another player'}
-              </p>
+              <h3 className="text-lg font-bold text-white leading-tight">Transfer Funds</h3>
+              <p className="text-[10px] sm:text-xs text-slate-400">Send ETB to another player</p>
             </div>
           </div>
           <button
@@ -146,169 +227,101 @@ function DepositModal({ isOpen, onClose }: DepositModalProps) {
           </button>
         </div>
 
-        {/* Tab switcher */}
-        <div className="flex bg-slate-800/60 p-1.5 rounded-xl border border-slate-700/40 mb-5">
-          <button
-            type="button"
-            onClick={() => { setTab('deposit'); setMessage(null); }}
-            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-              tab === 'deposit'
-                ? 'bg-emerald-600 text-white shadow-md'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            💰 Deposit
-          </button>
-          <button
-            type="button"
-            onClick={() => { setTab('transfer'); setMessage(null); }}
-            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-              tab === 'transfer'
-                ? 'bg-violet-600 text-white shadow-md'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            💸 Transfer
-          </button>
-        </div>
+        {/* Transfer panel */}
+        <div className="space-y-4">
+          {/* Recipient method sub-tabs */}
+          <div className="flex bg-slate-800/80 p-1 rounded-xl border border-slate-700/40">
+            <button
+              type="button"
+              onClick={() => { setTransferMethod('email'); setMessage(null); }}
+              className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                transferMethod === 'email'
+                  ? 'bg-violet-600 text-white shadow'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              ✉️ By Email
+            </button>
+            <button
+              type="button"
+              onClick={() => { setTransferMethod('phone'); setMessage(null); }}
+              className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                transferMethod === 'phone'
+                  ? 'bg-violet-600 text-white shadow'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              📱 By Phone
+            </button>
+          </div>
 
-        {/* Deposit panel */}
-        {tab === 'deposit' && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-4 gap-1.5">
-              {[50, 100, 200, 500].map((amt) => (
+          {/* Recipient input */}
+          {transferMethod === 'email' ? (
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 mb-1.5">Recipient Email</label>
+              <input
+                type="email"
+                value={recipientEmail}
+                onChange={(e) => setRecipientEmail(e.target.value)}
+                placeholder="friend@example.com"
+                className="w-full bg-slate-800 border border-slate-700/60 rounded-2xl px-4 py-3 text-white text-sm font-semibold placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-violet-500 transition-all"
+              />
+            </div>
+          ) : (
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 mb-1.5">Recipient Phone</label>
+              <div className="flex">
+                <span className="inline-flex items-center px-3 rounded-l-2xl border border-r-0 border-slate-700/60 bg-slate-700/40 text-slate-400 text-sm font-bold select-none">
+                  +251
+                </span>
+                <input
+                  type="tel"
+                  value={recipientPhone}
+                  onChange={(e) => setRecipientPhone(e.target.value)}
+                  placeholder="912345678"
+                  className="w-full bg-slate-800 border border-slate-700/60 rounded-r-2xl px-4 py-3 text-white text-sm font-semibold placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-violet-500 transition-all"
+                />
+              </div>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-400 mb-1.5">Amount</label>
+            <div className="grid grid-cols-4 gap-1.5 mb-2">
+              {[20, 50, 100, 200].map((amt) => (
                 <button
                   key={amt}
-                  onClick={() => setDepositAmount(amt)}
+                  onClick={() => setTransferAmount(amt)}
                   className={`text-xs py-2 rounded-xl border transition-all font-bold cursor-pointer ${
-                    depositAmount === amt
-                      ? 'bg-emerald-500 border-emerald-400 text-slate-950'
-                      : 'bg-slate-800 border-slate-700/50 text-slate-300 hover:border-emerald-500'
+                    transferAmount === amt
+                      ? 'bg-violet-500 border-violet-400 text-white'
+                      : 'bg-slate-800 border-slate-700/50 text-slate-300 hover:border-violet-500'
                   }`}
                 >
                   {amt} ETB
                 </button>
               ))}
             </div>
-
             <div className="relative">
               <input
                 type="number"
-                value={depositAmount}
+                value={transferAmount}
                 min={1}
-                onChange={(e) => setDepositAmount(Math.max(1, Number(e.target.value)))}
-                className="w-full bg-slate-800 border border-slate-700/60 rounded-2xl pl-4 pr-12 py-3 text-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                onChange={(e) => setTransferAmount(Math.max(1, Number(e.target.value)))}
+                className="w-full bg-slate-800 border border-slate-700/60 rounded-2xl pl-4 pr-12 py-3 text-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-violet-500 transition-all"
               />
               <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-semibold">ETB</span>
             </div>
-
-            <button
-              onClick={handleDeposit}
-              disabled={loading}
-              className="w-full py-3.5 rounded-2xl text-sm font-extrabold bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 transition-all shadow-lg shadow-emerald-950/50 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
-            >
-              {loading ? 'Processing…' : `Confirm ${depositAmount} ETB Deposit`}
-            </button>
           </div>
-        )}
 
-        {/* Transfer panel */}
-        {tab === 'transfer' && (
-          <div className="space-y-4">
-            {/* Recipient method sub-tabs */}
-            <div className="flex bg-slate-800/80 p-1 rounded-xl border border-slate-700/40">
-              <button
-                type="button"
-                onClick={() => { setTransferMethod('email'); setMessage(null); }}
-                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                  transferMethod === 'email'
-                    ? 'bg-violet-600 text-white shadow'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                ✉️ By Email
-              </button>
-              <button
-                type="button"
-                onClick={() => { setTransferMethod('phone'); setMessage(null); }}
-                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                  transferMethod === 'phone'
-                    ? 'bg-violet-600 text-white shadow'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                📱 By Phone
-              </button>
-            </div>
-
-            {/* Recipient input */}
-            {transferMethod === 'email' ? (
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1.5">Recipient Email</label>
-                <input
-                  type="email"
-                  value={recipientEmail}
-                  onChange={(e) => setRecipientEmail(e.target.value)}
-                  placeholder="friend@example.com"
-                  className="w-full bg-slate-800 border border-slate-700/60 rounded-2xl px-4 py-3 text-white text-sm font-semibold placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-violet-500 transition-all"
-                />
-              </div>
-            ) : (
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1.5">Recipient Phone</label>
-                <div className="flex">
-                  <span className="inline-flex items-center px-3 rounded-l-2xl border border-r-0 border-slate-700/60 bg-slate-700/40 text-slate-400 text-sm font-bold select-none">
-                    +251
-                  </span>
-                  <input
-                    type="tel"
-                    value={recipientPhone}
-                    onChange={(e) => setRecipientPhone(e.target.value)}
-                    placeholder="912345678"
-                    className="w-full bg-slate-800 border border-slate-700/60 rounded-r-2xl px-4 py-3 text-white text-sm font-semibold placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-violet-500 transition-all"
-                  />
-                </div>
-              </div>
-            )}
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-400 mb-1.5">Amount</label>
-              <div className="grid grid-cols-4 gap-1.5 mb-2">
-                {[20, 50, 100, 200].map((amt) => (
-                  <button
-                    key={amt}
-                    onClick={() => setTransferAmount(amt)}
-                    className={`text-xs py-2 rounded-xl border transition-all font-bold cursor-pointer ${
-                      transferAmount === amt
-                        ? 'bg-violet-500 border-violet-400 text-white'
-                        : 'bg-slate-800 border-slate-700/50 text-slate-300 hover:border-violet-500'
-                    }`}
-                  >
-                    {amt} ETB
-                  </button>
-                ))}
-              </div>
-              <div className="relative">
-                <input
-                  type="number"
-                  value={transferAmount}
-                  min={1}
-                  onChange={(e) => setTransferAmount(Math.max(1, Number(e.target.value)))}
-                  className="w-full bg-slate-800 border border-slate-700/60 rounded-2xl pl-4 pr-12 py-3 text-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-violet-500 transition-all"
-                />
-                <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-semibold">ETB</span>
-              </div>
-            </div>
-
-            <button
-              onClick={handleTransfer}
-              disabled={loading}
-              className="w-full py-3.5 rounded-2xl text-sm font-extrabold bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white transition-all shadow-lg shadow-violet-950/50 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
-            >
-              {loading ? 'Sending…' : `Send ${transferAmount} ETB`}
-            </button>
-          </div>
-        )}
+          <button
+            onClick={handleTransfer}
+            disabled={loading}
+            className="w-full py-3.5 rounded-2xl text-sm font-extrabold bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white transition-all shadow-lg shadow-violet-950/50 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
+          >
+            {loading ? 'Sending…' : `Send ${transferAmount} ETB`}
+          </button>
+        </div>
 
         {message && (
           <p className={`text-xs text-center font-semibold mt-3 animate-pulse ${
@@ -316,6 +329,181 @@ function DepositModal({ isOpen, onClose }: DepositModalProps) {
           }`}>
             {message.text}
           </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+interface SettingsModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
+  const { logout } = useStore();
+  const [view, setView] = useState<'menu' | 'email' | 'password'>('menu');
+
+  // Email change state
+  const [emailCurrentPassword, setEmailCurrentPassword] = useState('');
+  const [newEmail, setNewEmail] = useState('');
+  const [emailLoading, setEmailLoading] = useState(false);
+  const [emailMessage, setEmailMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  // Password change state
+  const [passwordCurrentPassword, setPasswordCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwordMessage, setPasswordMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setView('menu');
+      setEmailCurrentPassword(''); setNewEmail(''); setEmailMessage(null);
+      setPasswordCurrentPassword(''); setNewPassword(''); setConfirmPassword(''); setPasswordMessage(null);
+    }
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  const goBack = () => { setView('menu'); setEmailMessage(null); setPasswordMessage(null); };
+
+  const handleChangeEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!emailCurrentPassword || !newEmail) { setEmailMessage({ text: 'All fields are required.', type: 'error' }); return; }
+    setEmailLoading(true); setEmailMessage(null);
+    try {
+      const res = await authApi.changeEmail(emailCurrentPassword, newEmail);
+      setEmailMessage({ text: res.data.message || 'Email updated! Check your new inbox to verify.', type: 'success' });
+      setTimeout(() => { logout(); window.location.href = '/login'; }, 2500);
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to change email.';
+      setEmailMessage({ text: msg, type: 'error' });
+    } finally { setEmailLoading(false); }
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!passwordCurrentPassword || !newPassword || !confirmPassword) { setPasswordMessage({ text: 'All fields are required.', type: 'error' }); return; }
+    if (newPassword !== confirmPassword) { setPasswordMessage({ text: 'Passwords do not match.', type: 'error' }); return; }
+    if (newPassword.length < 6) { setPasswordMessage({ text: 'New password must be at least 6 characters.', type: 'error' }); return; }
+    setPasswordLoading(true); setPasswordMessage(null);
+    try {
+      const res = await authApi.changePassword(passwordCurrentPassword, newPassword);
+      setPasswordMessage({ text: res.data.message || 'Password changed successfully.', type: 'success' });
+      setPasswordCurrentPassword(''); setNewPassword(''); setConfirmPassword('');
+      setTimeout(() => { onClose(); setPasswordMessage(null); }, 2000);
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to change password.';
+      setPasswordMessage({ text: msg, type: 'error' });
+    } finally { setPasswordLoading(false); }
+  };
+
+  const inputCls = (ring: string) =>
+    `w-full bg-slate-800 border border-slate-700/60 rounded-2xl px-4 py-3 text-white text-sm font-semibold placeholder-slate-600 focus:outline-none focus:ring-2 ${ring} transition-all`;
+
+  return (
+    <div
+      className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center z-50 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-slate-900 border border-slate-700/60 rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-700/50">
+          {view !== 'menu' ? (
+            <button onClick={goBack} className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer text-base flex-shrink-0">
+              ←
+            </button>
+          ) : (
+            <div className="w-8 h-8 flex items-center justify-center text-lg flex-shrink-0">⚙️</div>
+          )}
+          <h3 className="flex-1 text-sm font-bold text-white">
+            {view === 'menu' && 'Settings'}
+            {view === 'email' && 'Change Email'}
+            {view === 'password' && 'Change Password'}
+          </h3>
+          <button onClick={onClose} className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center text-sm transition-colors cursor-pointer flex-shrink-0">
+            ✕
+          </button>
+        </div>
+
+        {/* Menu list */}
+        {view === 'menu' && (
+          <div className="py-2">
+            <button
+              onClick={() => setView('email')}
+              className="w-full flex items-center gap-4 px-5 py-4 hover:bg-slate-800/60 transition-colors group cursor-pointer"
+            >
+              <div className="w-10 h-10 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-lg flex-shrink-0 group-hover:bg-violet-500/20 transition-colors">
+                ✉️
+              </div>
+              <div className="flex-1 text-left">
+                <p className="text-sm font-bold text-white">Change Email</p>
+                <p className="text-xs text-slate-400">Update your login email address</p>
+              </div>
+              <span className="text-slate-500 group-hover:text-white transition-colors text-xl font-light">›</span>
+            </button>
+
+            <div className="mx-5 h-px bg-slate-700/40" />
+
+            <button
+              onClick={() => setView('password')}
+              className="w-full flex items-center gap-4 px-5 py-4 hover:bg-slate-800/60 transition-colors group cursor-pointer"
+            >
+              <div className="w-10 h-10 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-lg flex-shrink-0 group-hover:bg-blue-500/20 transition-colors">
+                🔒
+              </div>
+              <div className="flex-1 text-left">
+                <p className="text-sm font-bold text-white">Change Password</p>
+                <p className="text-xs text-slate-400">Set a new secure password</p>
+              </div>
+              <span className="text-slate-500 group-hover:text-white transition-colors text-xl font-light">›</span>
+            </button>
+          </div>
+        )}
+
+        {/* Change Email form */}
+        {view === 'email' && (
+          <form onSubmit={handleChangeEmail} className="p-5 space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 mb-1.5">New Email Address</label>
+              <input type="email" required autoFocus value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="newemail@example.com" className={inputCls('focus:ring-violet-500')} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 mb-1.5">Current Password</label>
+              <input type="password" required value={emailCurrentPassword} onChange={(e) => setEmailCurrentPassword(e.target.value)} placeholder="••••••••" className={inputCls('focus:ring-violet-500')} />
+            </div>
+            <button type="submit" disabled={emailLoading} className="w-full py-3 rounded-2xl text-sm font-extrabold bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white transition-all shadow-lg hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none cursor-pointer">
+              {emailLoading ? 'Updating…' : 'Update Email'}
+            </button>
+            {emailMessage && <p className={`text-xs text-center font-semibold animate-pulse ${emailMessage.type === 'success' ? 'text-emerald-400' : 'text-red-400'}`}>{emailMessage.text}</p>}
+          </form>
+        )}
+
+        {/* Change Password form */}
+        {view === 'password' && (
+          <form onSubmit={handleChangePassword} className="p-5 space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 mb-1.5">Current Password</label>
+              <input type="password" required autoFocus value={passwordCurrentPassword} onChange={(e) => setPasswordCurrentPassword(e.target.value)} placeholder="••••••••" className={inputCls('focus:ring-blue-500')} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 mb-1.5">New Password</label>
+              <input type="password" required value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="••••••••" className={inputCls('focus:ring-blue-500')} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 mb-1.5">Confirm New Password</label>
+              <input type="password" required value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="••••••••" className={inputCls('focus:ring-blue-500')} />
+            </div>
+            <button type="submit" disabled={passwordLoading} className="w-full py-3 rounded-2xl text-sm font-extrabold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white transition-all shadow-lg hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none cursor-pointer">
+              {passwordLoading ? 'Changing…' : 'Change Password'}
+            </button>
+            {passwordMessage && <p className={`text-xs text-center font-semibold animate-pulse ${passwordMessage.type === 'success' ? 'text-emerald-400' : 'text-red-400'}`}>{passwordMessage.text}</p>}
+          </form>
         )}
       </div>
     </div>
@@ -594,9 +782,11 @@ interface HeaderProps {
   onOpenDeposit: () => void;
   onOpenWithdraw: () => void;
   onOpenHistory: () => void;
+  onOpenTransfer: () => void;
+  onOpenSettings: () => void;
 }
 
-function Header({ onOpenDeposit, onOpenWithdraw, onOpenHistory }: HeaderProps) {
+function Header({ onOpenDeposit, onOpenWithdraw, onOpenHistory, onOpenTransfer, onOpenSettings }: HeaderProps) {
   const { user, logout, balance } = useStore();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -677,13 +867,19 @@ function Header({ onOpenDeposit, onOpenWithdraw, onOpenHistory }: HeaderProps) {
                   <span className="opacity-70">🏦</span> Withdraw
                 </button>
                 <button
+                  onClick={() => { onOpenTransfer(); setIsMenuOpen(false); }}
+                  className="w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-slate-700/50 hover:text-violet-400 transition-colors flex items-center gap-2 cursor-pointer"
+                >
+                  <span className="opacity-70">💸</span> Transfer
+                </button>
+                <button
                   onClick={() => { onOpenHistory(); setIsMenuOpen(false); }}
                   className="w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-slate-700/50 hover:text-violet-400 transition-colors flex items-center gap-2 cursor-pointer"
                 >
                   <span className="opacity-70">📜</span> Transaction History
                 </button>
                 <button
-                  onClick={() => { alert('Settings coming soon!'); setIsMenuOpen(false); }}
+                  onClick={() => { onOpenSettings(); setIsMenuOpen(false); }}
                   className="w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-slate-700/50 transition-colors flex items-center gap-2 cursor-pointer"
                 >
                   <span className="opacity-70">⚙️</span> Settings
@@ -710,8 +906,10 @@ function Header({ onOpenDeposit, onOpenWithdraw, onOpenHistory }: HeaderProps) {
 function App() {
   const { token } = useStore();
   const [isDepositOpen, setIsDepositOpen] = useState(false);
+  const [isTransferOpen, setIsTransferOpen] = useState(false);
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white flex flex-col">
@@ -729,6 +927,8 @@ function App() {
           onOpenDeposit={() => setIsDepositOpen(true)} 
           onOpenWithdraw={() => setIsWithdrawOpen(true)}
           onOpenHistory={() => setIsHistoryOpen(true)}
+          onOpenTransfer={() => setIsTransferOpen(true)}
+          onOpenSettings={() => setIsSettingsOpen(true)}
         />
       )}
 
@@ -777,8 +977,10 @@ function App() {
 
       {/* Modals */}
       <DepositModal isOpen={isDepositOpen} onClose={() => setIsDepositOpen(false)} />
+      <TransferModal isOpen={isTransferOpen} onClose={() => setIsTransferOpen(false)} />
       <WithdrawModal isOpen={isWithdrawOpen} onClose={() => setIsWithdrawOpen(false)} />
       <TransactionHistoryModal isOpen={isHistoryOpen} onClose={() => setIsHistoryOpen(false)} />
+      <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
     </div>
   );
 }
