@@ -1,6 +1,6 @@
-import nodemailer from 'nodemailer';
-import path from 'path';
-import fs from 'fs';
+import * as nodemailer from 'nodemailer';
+import * as path from 'path';
+import * as fs from 'fs';
 
 const port = Number(process.env.SMTP_PORT) || 587;
 const transporter = nodemailer.createTransport({
@@ -21,11 +21,16 @@ const FROM = `"Kendo Game" <${process.env.SMTP_USER}>`;
 
 // Absolute path to the logo file in the server directory
 const logoPath = path.join(process.cwd(), 'src', 'logo.png');
-const logoBuffer = fs.readFileSync(logoPath);
+let logoBuffer: Buffer | null = null;
+try {
+  logoBuffer = fs.readFileSync(logoPath);
+} catch (error) {
+  console.warn('[Email] Logo file not found at:', logoPath, '- emails will be sent without logo');
+}
 
 export async function sendVerificationEmail(to: string, token: string) {
   const link = `${APP_URL}/verify-email?token=${token}`;
-  await transporter.sendMail({
+  const mailOptions: any = {
     from: FROM,
     to,
     subject: 'Verify your Kendo account',
@@ -43,19 +48,24 @@ export async function sendVerificationEmail(to: string, token: string) {
         <p style="color:#64748b;font-size:13px;">This link expires in <strong>24 hours</strong>. If you didn't register, you can ignore this email.</p>
       </div>
     `,
-    attachments: [
+  };
+  
+  if (logoBuffer) {
+    mailOptions.attachments = [
       {
         content: logoBuffer,
         cid: 'logo',
         contentDisposition: 'inline',
       },
-    ],
-  });
+    ];
+  }
+  
+  await transporter.sendMail(mailOptions);
 }
 
 export async function sendPasswordResetEmail(to: string, token: string) {
   const link = `${APP_URL}/reset-password?token=${token}`;
-  await transporter.sendMail({
+  const mailOptions: any = {
     from: FROM,
     to,
     subject: 'Reset your Kendo password',
@@ -73,12 +83,17 @@ export async function sendPasswordResetEmail(to: string, token: string) {
         <p style="color:#64748b;font-size:13px;">This link expires in <strong>1 hour</strong>. If you didn't request a reset, you can safely ignore this email.</p>
       </div>
     `,
-    attachments: [
+  };
+  
+  if (logoBuffer) {
+    mailOptions.attachments = [
       {
         content: logoBuffer,
         cid: 'logo',
         contentDisposition: 'inline',
       },
-    ],
-  });
+    ];
+  }
+  
+  await transporter.sendMail(mailOptions);
 }
