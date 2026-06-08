@@ -22,9 +22,6 @@ export async function sendVerificationEmail(to: string, token: string) {
   console.log('[Email] Using FROM:', BREVO_FROM_EMAIL);
   console.log('[Email] Brevo API Key exists:', !!BREVO_API_KEY);
   
-  // Convert logo to base64 for inline image
-  const logoBase64 = logoBuffer ? `data:image/png;base64,${logoBuffer.toString('base64')}` : '';
-  
   try {
     const response = await axios.post('https://api.brevo.com/v3/smtp/email', {
       sender: { email: BREVO_FROM_EMAIL, name: 'Kendo Game' },
@@ -32,9 +29,6 @@ export async function sendVerificationEmail(to: string, token: string) {
       subject: 'Verify your Kendo account',
       htmlContent: `
         <div style="font-family:sans-serif;max-width:480px;margin:0 auto;background:#0f172a;color:#e2e8f0;padding:32px;border-radius:16px;text-align:center;">
-          <div style="margin-bottom:20px;text-align:center;">
-            ${logoBase64 ? `<img src="${logoBase64}" alt="Kendo Game" style="width:120px;height:auto;border:none;display:inline-block;" />` : ''}
-          </div>
           <h1 style="color:#a78bfa;margin-top:0;margin-bottom:8px;font-size:24px;">Kendo Game</h1>
           <h2 style="margin-top:0;font-size:18px;color:#cbd5e1;font-weight:normal;">Verify your email address</h2>
           <p style="color:#94a3b8;font-size:14px;line-height:1.6;margin-top:16px;">Thanks for registering! Click the button below to verify your email and activate your account.</p>
@@ -61,9 +55,6 @@ export async function sendPasswordResetEmail(to: string, token: string) {
   const link = `${APP_URL}/reset-password?token=${token}`;
   console.log('[Email] Sending password reset email to:', to);
   
-  // Convert logo to base64 for inline image
-  const logoBase64 = logoBuffer ? `data:image/png;base64,${logoBuffer.toString('base64')}` : '';
-  
   try {
     const response = await axios.post('https://api.brevo.com/v3/smtp/email', {
       sender: { email: BREVO_FROM_EMAIL, name: 'Kendo Game' },
@@ -71,9 +62,6 @@ export async function sendPasswordResetEmail(to: string, token: string) {
       subject: 'Reset your Kendo password',
       htmlContent: `
         <div style="font-family:sans-serif;max-width:480px;margin:0 auto;background:#0f172a;color:#e2e8f0;padding:32px;border-radius:16px;text-align:center;">
-          <div style="margin-bottom:20px;text-align:center;">
-            ${logoBase64 ? `<img src="${logoBase64}" alt="Kendo Game" style="width:120px;height:auto;border:none;display:inline-block;" />` : ''}
-          </div>
           <h1 style="color:#a78bfa;margin-top:0;margin-bottom:8px;font-size:24px;">Kendo Game</h1>
           <h2 style="margin-top:0;font-size:18px;color:#cbd5e1;font-weight:normal;">Reset your password</h2>
           <p style="color:#94a3b8;font-size:14px;line-height:1.6;margin-top:16px;">We received a request to reset your password. Click the button below to choose a new one.</p>
