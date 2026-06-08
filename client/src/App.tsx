@@ -27,7 +27,6 @@ interface DepositModalProps {
 }
 
 function DepositModal({ isOpen, onClose }: DepositModalProps) {
-  const { setBalance } = useStore();
   const [depositAmount, setDepositAmount] = useState(100);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
@@ -39,18 +38,11 @@ function DepositModal({ isOpen, onClose }: DepositModalProps) {
     setLoading(true);
     setMessage(null);
     try {
-      const res = await walletApi.deposit(depositAmount);
-      setBalance(res.data.balance);
-      setMessage({ text: `+${depositAmount} ETB deposited successfully!`, type: 'success' });
-      setTimeout(() => {
-        onClose();
-        setMessage(null);
-      }, 1500);
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      setMessage({ text: "You can't deposit now, try later", type: 'error' });
     } catch (err: unknown) {
-      const msg =
-        (err as { response?: { data?: { error?: string } } })?.response?.data?.error ||
-        'Deposit failed.';
-      setMessage({ text: msg, type: 'error' });
+      setMessage({ text: "You can't deposit now, try later", type: 'error' });
     } finally {
       setLoading(false);
     }
