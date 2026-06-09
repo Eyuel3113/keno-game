@@ -8,6 +8,7 @@ import authRoutes from './routes/auth';
 import gameRoutes from './routes/game';
 import walletRoutes from './routes/wallet';
 import historyRoutes from './routes/history';
+import adminRoutes from './routes/admin';
 import { initGameSocket } from './socket/gameSocket';
 import { swaggerSpec } from './config/swagger';
 import prisma from './config/db';
@@ -34,6 +35,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/game', gameRoutes);
 app.use('/api/wallet', walletRoutes);
 app.use('/api/history', historyRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Socket.io
 initGameSocket(io);

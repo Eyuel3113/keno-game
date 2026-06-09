@@ -16,7 +16,10 @@ model User {
   verifyToken    String?
   verifyExpires  DateTime?
   resetToken     String?
-  resetExpires   DateTime?
+  resetExpires  DateTime?
+  role           String    @default("USER") // USER, ADMIN
+  isBanned       Boolean   @default(false)
+  banReason      String?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
   wallet         Wallet?

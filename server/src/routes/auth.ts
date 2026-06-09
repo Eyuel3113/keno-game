@@ -109,14 +109,14 @@ router.post('/login', async (req: Request, res: Response) => {
     }
 
     const token = jwt.sign(
-      { id: user.id, email: user.email },
+      { id: user.id, email: user.email, role: user.role },
       process.env.JWT_SECRET || 'secret',
       { expiresIn: '7d' }
     );
 
     return res.json({
       token,
-      user: { id: user.id, email: user.email, phoneNumber: user.phoneNumber, balance: user.wallet?.balance },
+      user: { id: user.id, email: user.email, phoneNumber: user.phoneNumber, balance: user.wallet?.balance, role: user.role },
     });
   } catch (err) {
     console.error(err);

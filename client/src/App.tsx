@@ -6,6 +6,7 @@ import RegisterPage from './pages/RegisterPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
+import AdminDashboardPage from './pages/AdminDashboardPage';
 import { useStore } from './store';
 import { walletApi, authApi } from './api';
 
@@ -333,7 +334,7 @@ interface SettingsModalProps {
 }
 
 function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
-  const { logout } = useStore();
+  const { logout, user } = useStore();
   const [view, setView] = useState<'menu' | 'email' | 'password'>('menu');
 
   // Email change state
@@ -455,6 +456,24 @@ function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               </div>
               <span className="text-slate-500 group-hover:text-white transition-colors text-xl font-light">›</span>
             </button>
+
+            <div className="mx-5 h-px bg-slate-700/40" />
+
+            {user?.role === 'ADMIN' && (
+              <button
+                onClick={() => window.location.href = '/admin'}
+                className="w-full flex items-center gap-4 px-5 py-4 hover:bg-slate-800/60 transition-colors group cursor-pointer"
+              >
+                <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-lg flex-shrink-0 group-hover:bg-emerald-500/20 transition-colors">
+                  👑
+                </div>
+                <div className="flex-1 text-left">
+                  <p className="text-sm font-bold text-white">Admin Dashboard</p>
+                  <p className="text-xs text-slate-400">Manage users and settings</p>
+                </div>
+                <span className="text-slate-500 group-hover:text-white transition-colors text-xl font-light">›</span>
+              </button>
+            )}
           </div>
         )}
 
@@ -962,6 +981,14 @@ function App() {
           <Route
             path="/reset-password"
             element={<ResetPasswordPage />}
+          />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute>
+                <AdminDashboardPage />
+              </ProtectedRoute>
+            }
           />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
