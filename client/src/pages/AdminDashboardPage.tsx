@@ -41,13 +41,22 @@ export default function AdminDashboardPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Search, filter, and pagination state
+  const [search, setSearch] = useState('');
+  const [roleFilter, setRoleFilter] = useState('');
+  const [bannedFilter, setBannedFilter] = useState('');
+  const [typeFilter, setTypeFilter] = useState('');
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+
   useEffect(() => {
     if (!token) {
       navigate('/login');
       return;
     }
     fetchData();
-  }, [token, navigate, activeTab]);
+  }, [token, navigate, activeTab, search, roleFilter, bannedFilter, typeFilter, page, limit]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -59,17 +68,38 @@ export default function AdminDashboardPage() {
         const data = await res.json();
         setStats(data);
       } else if (activeTab === 'users') {
-        const res = await fetch('http://localhost:5000/api/admin/users', { headers });
+        const params = new URLSearchParams({
+          search,
+          role: roleFilter,
+          isBanned: bannedFilter,
+          page: page.toString(),
+          limit: limit.toString()
+        });
+        const res = await fetch(`http://localhost:5000/api/admin/users?${params}`, { headers });
         const data = await res.json();
-        setUsers(data);
+        setUsers(data.users);
+        setTotalPages(data.totalPages);
       } else if (activeTab === 'transactions') {
-        const res = await fetch('http://localhost:5000/api/admin/transactions', { headers });
-        const data = await res.json();
-        setTransactions(data);
-      } else if (activeTab === 'activity') {
-        const res = await fetch('http://localhost:5000/api/admin/activity', { headers });
+        const params = new URLSearchParams({
+          search,
+          type: typeFilter,
+          page: page.toString(),
+          limit: limit.toString()
+        });
+        const res = await fetch(`http://localhost:5000/api/admin/transactions?${params}`, { headers });
         const data = await res.json();
         setTransactions(data.transactions);
+        setTotalPages(data.totalPages);
+      } else if (activeTab === 'activity') {
+        const params = new URLSearchParams({
+          search,
+          page: page.toString(),
+          limit: limit.toString()
+        });
+        const res = await fetch(`http://localhost:5000/api/admin/activity?${params}`, { headers });
+        const data = await res.json();
+        setTransactions(data.transactions);
+        setTotalPages(data.totalPages);
       }
     } catch (error) {
       console.error('Failed to fetch data:', error);
@@ -191,8 +221,41 @@ export default function AdminDashboardPage() {
 
         {/* Users Tab */}
         {activeTab === 'users' && (
-          <div className="bg-slate-900 border border-slate-700 rounded-xl overflow-hidden">
-            <table className="w-full">
+          <div>
+            {/* Search and Filters */}
+            <div className="bg-slate-900 border border-slate-700 rounded-xl p-4 mb-4">
+              <div className="flex flex-wrap gap-4">
+                <input
+                  type="text"
+                  placeholder="Search by email or phone..."
+                  value={search}
+                  onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                  className="flex-1 min-w-[200px] bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-slate-400"
+                />
+                <select
+                  value={roleFilter}
+                  onChange={(e) => { setRoleFilter(e.target.value); setPage(1); }}
+                  className="bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-white"
+                >
+                  <option value="">All Roles</option>
+                  <option value="USER">User</option>
+                  <option value="ADMIN">Admin</option>
+                </select>
+                <select
+                  value={bannedFilter}
+                  onChange={(e) => { setBannedFilter(e.target.value); setPage(1); }}
+                  className="bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-white"
+                >
+                  <option value="">All Status</option>
+                  <option value="true">Banned</option>
+                  <option value="false">Active</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Users Table */}
+            <div className="bg-slate-900 border border-slate-700 rounded-xl overflow-hidden">
+              <table className="w-full">
               <thead className="bg-slate-800">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Email</th>
@@ -243,12 +306,73 @@ export default function AdminDashboardPage() {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination */}
+          <div className="bg-slate-900 border border-slate-700 rounded-xl p-4 mt-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-slate-400 text-sm">Items per page:</span>
+              <select
+                value={limit}
+                onChange={(e) => { setLimit(parseInt(e.target.value)); setPage(1); }}
+                className="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-white text-sm"
+              >
+                <option value="10">10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPage(Math.max(1, page - 1))}
+                disabled={page === 1}
+                className="px-3 py-1 bg-slate-800 border border-slate-600 rounded text-white text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Previous
+              </button>
+              <span className="text-slate-400 text-sm">
+                Page {page} of {totalPages}
+              </span>
+              <button
+                onClick={() => setPage(Math.min(totalPages, page + 1))}
+                disabled={page === totalPages}
+                className="px-3 py-1 bg-slate-800 border border-slate-600 rounded text-white text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        </div>
         )}
 
         {/* Transactions Tab */}
         {activeTab === 'transactions' && (
-          <div className="bg-slate-900 border border-slate-700 rounded-xl overflow-hidden">
-            <table className="w-full">
+          <div>
+            {/* Search and Filters */}
+            <div className="bg-slate-900 border border-slate-700 rounded-xl p-4 mb-4">
+              <div className="flex flex-wrap gap-4">
+                <input
+                  type="text"
+                  placeholder="Search by email or phone..."
+                  value={search}
+                  onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                  className="flex-1 min-w-[200px] bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-slate-400"
+                />
+                <select
+                  value={typeFilter}
+                  onChange={(e) => { setTypeFilter(e.target.value); setPage(1); }}
+                  className="bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-white"
+                >
+                  <option value="">All Types</option>
+                  <option value="DEPOSIT">Deposit</option>
+                  <option value="WITHDRAW">Withdraw</option>
+                  <option value="TRANSFER">Transfer</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Transactions Table */}
+            <div className="bg-slate-900 border border-slate-700 rounded-xl overflow-hidden">
+              <table className="w-full">
               <thead className="bg-slate-800">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Type</th>
@@ -277,12 +401,63 @@ export default function AdminDashboardPage() {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination */}
+          <div className="bg-slate-900 border border-slate-700 rounded-xl p-4 mt-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-slate-400 text-sm">Items per page:</span>
+              <select
+                value={limit}
+                onChange={(e) => { setLimit(parseInt(e.target.value)); setPage(1); }}
+                className="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-white text-sm"
+              >
+                <option value="10">10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPage(Math.max(1, page - 1))}
+                disabled={page === 1}
+                className="px-3 py-1 bg-slate-800 border border-slate-600 rounded text-white text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Previous
+              </button>
+              <span className="text-slate-400 text-sm">
+                Page {page} of {totalPages}
+              </span>
+              <button
+                onClick={() => setPage(Math.min(totalPages, page + 1))}
+                disabled={page === totalPages}
+                className="px-3 py-1 bg-slate-800 border border-slate-600 rounded text-white text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        </div>
         )}
 
         {/* Activity Tab */}
         {activeTab === 'activity' && (
-          <div className="bg-slate-900 border border-slate-700 rounded-xl overflow-hidden">
-            <table className="w-full">
+          <div>
+            {/* Search */}
+            <div className="bg-slate-900 border border-slate-700 rounded-xl p-4 mb-4">
+              <div className="flex flex-wrap gap-4">
+                <input
+                  type="text"
+                  placeholder="Search by email or phone..."
+                  value={search}
+                  onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                  className="flex-1 min-w-[200px] bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-slate-400"
+                />
+              </div>
+            </div>
+
+            {/* Activity Table */}
+            <div className="bg-slate-900 border border-slate-700 rounded-xl overflow-hidden">
+              <table className="w-full">
               <thead className="bg-slate-800">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Type</th>
@@ -311,6 +486,42 @@ export default function AdminDashboardPage() {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination */}
+          <div className="bg-slate-900 border border-slate-700 rounded-xl p-4 mt-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-slate-400 text-sm">Items per page:</span>
+              <select
+                value={limit}
+                onChange={(e) => { setLimit(parseInt(e.target.value)); setPage(1); }}
+                className="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-white text-sm"
+              >
+                <option value="10">10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPage(Math.max(1, page - 1))}
+                disabled={page === 1}
+                className="px-3 py-1 bg-slate-800 border border-slate-600 rounded text-white text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Previous
+              </button>
+              <span className="text-slate-400 text-sm">
+                Page {page} of {totalPages}
+              </span>
+              <button
+                onClick={() => setPage(Math.min(totalPages, page + 1))}
+                disabled={page === totalPages}
+                className="px-3 py-1 bg-slate-800 border border-slate-600 rounded text-white text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        </div>
         )}
       </div>
     </div>

@@ -47,25 +47,54 @@ router.get('/stats', authenticate, requireAdmin, async (req: AuthRequest, res) =
 // Get all users
 router.get('/users', authenticate, requireAdmin, async (req: AuthRequest, res) => {
   try {
-    const users = await prisma.user.findMany({
-      select: {
-        id: true,
-        email: true,
-        phoneNumber: true,
-        emailVerified: true,
-        role: true,
-        isBanned: true,
-        banReason: true,
-        createdAt: true,
-        wallet: {
-          select: {
-            balance: true
+    const { search, role, isBanned, page = '1', limit = '10' } = req.query;
+    const pageNum = parseInt(page as string);
+    const limitNum = parseInt(limit as string);
+    const skip = (pageNum - 1) * limitNum;
+
+    const where: any = {};
+    
+    if (search) {
+      where.OR = [
+        { email: { contains: search as string, mode: 'insensitive' } },
+        { phoneNumber: { contains: search as string, mode: 'insensitive' } }
+      ];
+    }
+    
+    if (role) {
+      where.role = role;
+    }
+    
+    if (isBanned !== undefined) {
+      where.isBanned = isBanned === 'true';
+    }
+
+    const [users, total] = await Promise.all([
+      prisma.user.findMany({
+        where,
+        select: {
+          id: true,
+          email: true,
+          phoneNumber: true,
+          emailVerified: true,
+          role: true,
+          isBanned: true,
+          banReason: true,
+          createdAt: true,
+          wallet: {
+            select: {
+              balance: true
+            }
           }
-        }
-      },
-      orderBy: { createdAt: 'desc' }
-    });
-    res.json(users);
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limitNum
+      }),
+      prisma.user.count({ where })
+    ]);
+    
+    res.json({ users, total, page: pageNum, limit: limitNum, totalPages: Math.ceil(total / limitNum) });
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch users' });
   }
@@ -108,18 +137,45 @@ router.post('/users/:id/role', authenticate, requireAdmin, async (req: AuthReque
 // Get all transactions
 router.get('/transactions', authenticate, requireAdmin, async (req: AuthRequest, res) => {
   try {
-    const transactions = await prisma.transaction.findMany({
-      include: {
-        user: {
-          select: {
-            email: true,
-            phoneNumber: true
+    const { search, type, page = '1', limit = '10' } = req.query;
+    const pageNum = parseInt(page as string);
+    const limitNum = parseInt(limit as string);
+    const skip = (pageNum - 1) * limitNum;
+
+    const where: any = {};
+    
+    if (search) {
+      where.user = {
+        OR: [
+          { email: { contains: search as string, mode: 'insensitive' } },
+          { phoneNumber: { contains: search as string, mode: 'insensitive' } }
+        ]
+      };
+    }
+    
+    if (type) {
+      where.type = type;
+    }
+
+    const [transactions, total] = await Promise.all([
+      prisma.transaction.findMany({
+        where,
+        include: {
+          user: {
+            select: {
+              email: true,
+              phoneNumber: true
+            }
           }
-        }
-      },
-      orderBy: { createdAt: 'desc' }
-    });
-    res.json(transactions);
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limitNum
+      }),
+      prisma.transaction.count({ where })
+    ]);
+    
+    res.json({ transactions, total, page: pageNum, limit: limitNum, totalPages: Math.ceil(total / limitNum) });
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch transactions' });
   }
@@ -173,32 +229,64 @@ router.get('/games', authenticate, requireAdmin, async (req: AuthRequest, res) =
 // Get recent activity
 router.get('/activity', authenticate, requireAdmin, async (req: AuthRequest, res) => {
   try {
-    const recentBets = await prisma.bet.findMany({
-      include: {
-        user: {
-          select: {
-            email: true
+    const { search, page = '1', limit = '10' } = req.query;
+    const pageNum = parseInt(page as string);
+    const limitNum = parseInt(limit as string);
+    const skip = (pageNum - 1) * limitNum;
+
+    const where: any = {};
+    
+    if (search) {
+      where.user = {
+        OR: [
+          { email: { contains: search as string, mode: 'insensitive' } },
+          { phoneNumber: { contains: search as string, mode: 'insensitive' } }
+        ]
+      };
+    }
+
+    const [recentBets, betsTotal] = await Promise.all([
+      prisma.bet.findMany({
+        where,
+        include: {
+          user: {
+            select: {
+              email: true
+            }
           }
-        }
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 20
-    });
-    const recentTransactions = await prisma.transaction.findMany({
-      include: {
-        user: {
-          select: {
-            email: true
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limitNum
+      }),
+      prisma.bet.count({ where })
+    ]);
+
+    const [recentTransactions, transactionsTotal] = await Promise.all([
+      prisma.transaction.findMany({
+        where,
+        include: {
+          user: {
+            select: {
+              email: true
+            }
           }
-        }
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 20
-    });
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limitNum
+      }),
+      prisma.transaction.count({ where })
+    ]);
 
     res.json({
       bets: recentBets,
-      transactions: recentTransactions
+      transactions: recentTransactions,
+      betsTotal,
+      transactionsTotal,
+      page: pageNum,
+      limit: limitNum,
+      totalPages: Math.ceil(Math.max(betsTotal, transactionsTotal) / limitNum)
     });
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch activity' });
