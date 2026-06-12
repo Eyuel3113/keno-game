@@ -825,7 +825,9 @@ function Header({ onOpenDeposit, onOpenWithdraw, onOpenHistory, onOpenTransfer, 
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
         {/* Logo */}
         <div className="flex items-center gap-2">
-          <img src="/logo-banner.jpg" alt="Kendo" className="h-9 w-auto object-cover rounded-lg" style={{maxWidth: '120px'}} />
+          <button onClick={() => navigate('/')} className="cursor-pointer">
+            <img src="/logo-banner.jpg" alt="Kendo" className="h-9 w-auto object-cover rounded-lg" style={{maxWidth: '120px'}} />
+          </button>
           <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-300 text-xs font-medium border border-violet-500/30">
             Live
           </span>

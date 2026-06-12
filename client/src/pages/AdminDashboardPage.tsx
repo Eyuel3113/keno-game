@@ -149,15 +149,15 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white p-8">
+    <div className="min-h-screen bg-slate-950 text-white p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8">Admin Dashboard</h1>
+        <h1 className="text-2xl md:text-3xl font-bold mb-6 md:mb-8">Admin Dashboard</h1>
 
         {/* Tabs */}
-        <div className="flex gap-4 mb-8 border-b border-slate-700 pb-4">
+        <div className="flex flex-wrap gap-2 md:gap-4 mb-6 md:mb-8 border-b border-slate-700 pb-4 overflow-x-auto">
           <button
             onClick={() => setActiveTab('stats')}
-            className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
+            className={`px-3 py-2 md:px-4 md:py-2 rounded-lg font-semibold transition-colors text-sm md:text-base whitespace-nowrap ${
               activeTab === 'stats' ? 'bg-violet-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
             }`}
           >
@@ -165,7 +165,7 @@ export default function AdminDashboardPage() {
           </button>
           <button
             onClick={() => setActiveTab('users')}
-            className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
+            className={`px-3 py-2 md:px-4 md:py-2 rounded-lg font-semibold transition-colors text-sm md:text-base whitespace-nowrap ${
               activeTab === 'users' ? 'bg-violet-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
             }`}
           >
@@ -173,7 +173,7 @@ export default function AdminDashboardPage() {
           </button>
           <button
             onClick={() => setActiveTab('transactions')}
-            className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
+            className={`px-3 py-2 md:px-4 md:py-2 rounded-lg font-semibold transition-colors text-sm md:text-base whitespace-nowrap ${
               activeTab === 'transactions' ? 'bg-violet-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
             }`}
           >
@@ -181,7 +181,7 @@ export default function AdminDashboardPage() {
           </button>
           <button
             onClick={() => setActiveTab('activity')}
-            className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
+            className={`px-3 py-2 md:px-4 md:py-2 rounded-lg font-semibold transition-colors text-sm md:text-base whitespace-nowrap ${
               activeTab === 'activity' ? 'bg-violet-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
             }`}
           >
@@ -224,18 +224,18 @@ export default function AdminDashboardPage() {
           <div>
             {/* Search and Filters */}
             <div className="bg-slate-900 border border-slate-700 rounded-xl p-4 mb-4">
-              <div className="flex flex-wrap gap-4">
+              <div className="flex flex-col md:flex-row gap-4">
                 <input
                   type="text"
                   placeholder="Search by email or phone..."
                   value={search}
                   onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                  className="flex-1 min-w-[200px] bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-slate-400"
+                  className="w-full md:flex-1 bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-slate-400"
                 />
                 <select
                   value={roleFilter}
                   onChange={(e) => { setRoleFilter(e.target.value); setPage(1); }}
-                  className="bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-white"
+                  className="w-full md:w-auto bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-white"
                 >
                   <option value="">All Roles</option>
                   <option value="USER">User</option>
@@ -244,7 +244,7 @@ export default function AdminDashboardPage() {
                 <select
                   value={bannedFilter}
                   onChange={(e) => { setBannedFilter(e.target.value); setPage(1); }}
-                  className="bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-white"
+                  className="w-full md:w-auto bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-white"
                 >
                   <option value="">All Status</option>
                   <option value="true">Banned</option>
@@ -254,8 +254,8 @@ export default function AdminDashboardPage() {
             </div>
 
             {/* Users Table */}
-            <div className="bg-slate-900 border border-slate-700 rounded-xl overflow-hidden">
-              <table className="w-full">
+            <div className="bg-slate-900 border border-slate-700 rounded-xl overflow-x-auto">
+              <table className="w-full min-w-[600px]">
               <thead className="bg-slate-800">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Email</th>
@@ -308,8 +308,8 @@ export default function AdminDashboardPage() {
           </div>
 
           {/* Pagination */}
-          <div className="bg-slate-900 border border-slate-700 rounded-xl p-4 mt-4 flex items-center justify-between">
-            <div className="flex items-center gap-2">
+          <div className="bg-slate-900 border border-slate-700 rounded-xl p-4 mt-4 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2 w-full md:w-auto">
               <span className="text-slate-400 text-sm">Items per page:</span>
               <select
                 value={limit}
@@ -321,7 +321,7 @@ export default function AdminDashboardPage() {
                 <option value="50">50</option>
               </select>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-full md:w-auto justify-center">
               <button
                 onClick={() => setPage(Math.max(1, page - 1))}
                 disabled={page === 1}
@@ -349,18 +349,18 @@ export default function AdminDashboardPage() {
           <div>
             {/* Search and Filters */}
             <div className="bg-slate-900 border border-slate-700 rounded-xl p-4 mb-4">
-              <div className="flex flex-wrap gap-4">
+              <div className="flex flex-col md:flex-row gap-4">
                 <input
                   type="text"
                   placeholder="Search by email or phone..."
                   value={search}
                   onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                  className="flex-1 min-w-[200px] bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-slate-400"
+                  className="w-full md:flex-1 bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-slate-400"
                 />
                 <select
                   value={typeFilter}
                   onChange={(e) => { setTypeFilter(e.target.value); setPage(1); }}
-                  className="bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-white"
+                  className="w-full md:w-auto bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-white"
                 >
                   <option value="">All Types</option>
                   <option value="DEPOSIT">Deposit</option>
@@ -371,8 +371,8 @@ export default function AdminDashboardPage() {
             </div>
 
             {/* Transactions Table */}
-            <div className="bg-slate-900 border border-slate-700 rounded-xl overflow-hidden">
-              <table className="w-full">
+            <div className="bg-slate-900 border border-slate-700 rounded-xl overflow-x-auto">
+              <table className="w-full min-w-[600px]">
               <thead className="bg-slate-800">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Type</th>
@@ -403,8 +403,8 @@ export default function AdminDashboardPage() {
           </div>
 
           {/* Pagination */}
-          <div className="bg-slate-900 border border-slate-700 rounded-xl p-4 mt-4 flex items-center justify-between">
-            <div className="flex items-center gap-2">
+          <div className="bg-slate-900 border border-slate-700 rounded-xl p-4 mt-4 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2 w-full md:w-auto">
               <span className="text-slate-400 text-sm">Items per page:</span>
               <select
                 value={limit}
@@ -416,7 +416,7 @@ export default function AdminDashboardPage() {
                 <option value="50">50</option>
               </select>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-full md:w-auto justify-center">
               <button
                 onClick={() => setPage(Math.max(1, page - 1))}
                 disabled={page === 1}
@@ -444,20 +444,20 @@ export default function AdminDashboardPage() {
           <div>
             {/* Search */}
             <div className="bg-slate-900 border border-slate-700 rounded-xl p-4 mb-4">
-              <div className="flex flex-wrap gap-4">
+              <div className="flex flex-col md:flex-row gap-4">
                 <input
                   type="text"
                   placeholder="Search by email or phone..."
                   value={search}
                   onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                  className="flex-1 min-w-[200px] bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-slate-400"
+                  className="w-full md:flex-1 bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-slate-400"
                 />
               </div>
             </div>
 
             {/* Activity Table */}
-            <div className="bg-slate-900 border border-slate-700 rounded-xl overflow-hidden">
-              <table className="w-full">
+            <div className="bg-slate-900 border border-slate-700 rounded-xl overflow-x-auto">
+              <table className="w-full min-w-[600px]">
               <thead className="bg-slate-800">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Type</th>
@@ -488,8 +488,8 @@ export default function AdminDashboardPage() {
           </div>
 
           {/* Pagination */}
-          <div className="bg-slate-900 border border-slate-700 rounded-xl p-4 mt-4 flex items-center justify-between">
-            <div className="flex items-center gap-2">
+          <div className="bg-slate-900 border border-slate-700 rounded-xl p-4 mt-4 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2 w-full md:w-auto">
               <span className="text-slate-400 text-sm">Items per page:</span>
               <select
                 value={limit}
@@ -501,7 +501,7 @@ export default function AdminDashboardPage() {
                 <option value="50">50</option>
               </select>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-full md:w-auto justify-center">
               <button
                 onClick={() => setPage(Math.max(1, page - 1))}
                 disabled={page === 1}
