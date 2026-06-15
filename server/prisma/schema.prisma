@@ -59,11 +59,17 @@ model Bet {
 }
 
 model Transaction {
-  id          String   @id @default(uuid())
-  type        String   // DEPOSIT, WITHDRAW, TRANSFER_SENT, TRANSFER_RECEIVED
-  amount      Float
-  userId      String
-  user        User     @relation(fields: [userId], references: [id])
-  description String?
-  createdAt   DateTime @default(now())
+  id            String   @id @default(uuid())
+  type          String   // DEPOSIT, WITHDRAW, TRANSFER_SENT, TRANSFER_RECEIVED
+  amount        Float
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  description   String?
+  status        String   @default("COMPLETED") // PENDING, COMPLETED, REJECTED
+  paymentMethod String?  // CBE, TELEBIRR
+  paymentProof  String?  // URL to uploaded proof image
+  accountNumber String?  // User's account number for withdrawal
+  adminNote     String?  // Admin note for rejection
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @default(now())
 }

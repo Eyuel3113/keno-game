@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store';
+import { API_BASE_URL } from '../config';
 
 interface Stats {
   totalUsers: number;
@@ -28,6 +29,11 @@ interface Transaction {
   type: string;
   amount: number;
   description: string | null;
+  status: string;
+  paymentMethod: string | null;
+  paymentProof: string | null;
+  accountNumber: string | null;
+  adminNote: string | null;
   createdAt: string;
   user: { email: string; phoneNumber: string | null };
 }
@@ -35,10 +41,12 @@ interface Transaction {
 export default function AdminDashboardPage() {
   const navigate = useNavigate();
   const { token } = useStore();
-  const [activeTab, setActiveTab] = useState<'stats' | 'users' | 'transactions' | 'activity'>('stats');
+  const [activeTab, setActiveTab] = useState<'stats' | 'users' | 'transactions' | 'activity' | 'pending'>('stats');
   const [stats, setStats] = useState<Stats | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [pendingDeposits, setPendingDeposits] = useState<Transaction[]>([]);
+  const [pendingWithdrawals, setPendingWithdrawals] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Search, filter, and pagination state
@@ -64,7 +72,7 @@ export default function AdminDashboardPage() {
       const headers = { Authorization: `Bearer ${token}` };
       
       if (activeTab === 'stats') {
-        const res = await fetch('http://localhost:5000/api/admin/stats', { headers });
+        const res = await fetch(`${API_BASE_URL}/api/admin/stats`, { headers });
         const data = await res.json();
         setStats(data);
       } else if (activeTab === 'users') {
@@ -75,7 +83,7 @@ export default function AdminDashboardPage() {
           page: page.toString(),
           limit: limit.toString()
         });
-        const res = await fetch(`http://localhost:5000/api/admin/users?${params}`, { headers });
+        const res = await fetch(`${API_BASE_URL}/api/admin/users?${params}`, { headers });
         const data = await res.json();
         setUsers(data.users);
         setTotalPages(data.totalPages);
@@ -86,7 +94,7 @@ export default function AdminDashboardPage() {
           page: page.toString(),
           limit: limit.toString()
         });
-        const res = await fetch(`http://localhost:5000/api/admin/transactions?${params}`, { headers });
+        const res = await fetch(`${API_BASE_URL}/api/admin/transactions?${params}`, { headers });
         const data = await res.json();
         setTransactions(data.transactions);
         setTotalPages(data.totalPages);
@@ -96,10 +104,19 @@ export default function AdminDashboardPage() {
           page: page.toString(),
           limit: limit.toString()
         });
-        const res = await fetch(`http://localhost:5000/api/admin/activity?${params}`, { headers });
+        const res = await fetch(`${API_BASE_URL}/api/admin/activity?${params}`, { headers });
         const data = await res.json();
         setTransactions(data.transactions);
         setTotalPages(data.totalPages);
+      } else if (activeTab === 'pending') {
+        const [depositsRes, withdrawalsRes] = await Promise.all([
+          fetch(`${API_BASE_URL}/api/admin/deposits/pending`, { headers }),
+          fetch(`${API_BASE_URL}/api/admin/withdrawals/pending`, { headers })
+        ]);
+        const deposits = await depositsRes.json();
+        const withdrawals = await withdrawalsRes.json();
+        setPendingDeposits(deposits);
+        setPendingWithdrawals(withdrawals);
       }
     } catch (error) {
       console.error('Failed to fetch data:', error);
@@ -110,7 +127,7 @@ export default function AdminDashboardPage() {
 
   const handleBanUser = async (userId: string, isBanned: boolean) => {
     try {
-      await fetch(`http://localhost:5000/api/admin/users/${userId}/ban`, {
+      await fetch(`${API_BASE_URL}/api/admin/users/${userId}/ban`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -126,7 +143,7 @@ export default function AdminDashboardPage() {
 
   const handleRoleChange = async (userId: string, role: string) => {
     try {
-      await fetch(`http://localhost:5000/api/admin/users/${userId}/role`, {
+      await fetch(`${API_BASE_URL}/api/admin/users/${userId}/role`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -137,6 +154,56 @@ export default function AdminDashboardPage() {
       fetchData();
     } catch (error) {
       console.error('Failed to update user role:', error);
+    }
+  };
+
+  const handleApproveDeposit = async (transactionId: string) => {
+    try {
+      await fetch(`${API_BASE_URL}/api/admin/deposits/${transactionId}/approve`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      fetchData();
+    } catch (error) {
+      console.error('Failed to approve deposit:', error);
+    }
+  };
+
+  const handleRejectDeposit = async (transactionId: string, adminNote: string) => {
+    try {
+      await fetch(`${API_BASE_URL}/api/admin/deposits/${transactionId}/reject`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminNote })
+      });
+      fetchData();
+    } catch (error) {
+      console.error('Failed to reject deposit:', error);
+    }
+  };
+
+  const handleApproveWithdrawal = async (transactionId: string) => {
+    try {
+      await fetch(`${API_BASE_URL}/api/admin/withdrawals/${transactionId}/approve`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      fetchData();
+    } catch (error) {
+      console.error('Failed to approve withdrawal:', error);
+    }
+  };
+
+  const handleRejectWithdrawal = async (transactionId: string, adminNote: string) => {
+    try {
+      await fetch(`${API_BASE_URL}/api/admin/withdrawals/${transactionId}/reject`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminNote })
+      });
+      fetchData();
+    } catch (error) {
+      console.error('Failed to reject withdrawal:', error);
     }
   };
 
@@ -186,6 +253,14 @@ export default function AdminDashboardPage() {
             }`}
           >
             Activity
+          </button>
+          <button
+            onClick={() => setActiveTab('pending')}
+            className={`px-3 py-2 md:px-4 md:py-2 rounded-lg font-semibold transition-colors text-sm md:text-base whitespace-nowrap ${
+              activeTab === 'pending' ? 'bg-violet-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+            }`}
+          >
+            Pending
           </button>
         </div>
 
@@ -378,6 +453,7 @@ export default function AdminDashboardPage() {
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Type</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Amount</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-300 uppercase">User</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Status</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Date</th>
                 </tr>
               </thead>
@@ -395,6 +471,16 @@ export default function AdminDashboardPage() {
                     </td>
                     <td className="px-6 py-4 text-sm font-semibold text-white">{tx.amount.toFixed(2)} ETB</td>
                     <td className="px-6 py-4 text-sm text-slate-300">{tx.user.email}</td>
+                    <td className="px-6 py-4 text-sm">
+                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                        tx.status === 'PENDING' ? 'bg-yellow-500/20 text-yellow-400' :
+                        tx.status === 'REJECTED' ? 'bg-red-500/20 text-red-400' :
+                        tx.status === 'COMPLETED' ? 'bg-emerald-500/20 text-emerald-400' :
+                        'bg-slate-500/20 text-slate-400'
+                      }`}>
+                        {tx.status || 'COMPLETED'}
+                      </span>
+                    </td>
                     <td className="px-6 py-4 text-sm text-slate-400">{new Date(tx.createdAt).toLocaleString()}</td>
                   </tr>
                 ))}
@@ -463,6 +549,7 @@ export default function AdminDashboardPage() {
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Type</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Amount</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-300 uppercase">User</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Status</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Date</th>
                 </tr>
               </thead>
@@ -480,6 +567,16 @@ export default function AdminDashboardPage() {
                     </td>
                     <td className="px-6 py-4 text-sm font-semibold text-white">{tx.amount.toFixed(2)} ETB</td>
                     <td className="px-6 py-4 text-sm text-slate-300">{tx.user.email}</td>
+                    <td className="px-6 py-4 text-sm">
+                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                        tx.status === 'PENDING' ? 'bg-yellow-500/20 text-yellow-400' :
+                        tx.status === 'REJECTED' ? 'bg-red-500/20 text-red-400' :
+                        tx.status === 'COMPLETED' ? 'bg-emerald-500/20 text-emerald-400' :
+                        'bg-slate-500/20 text-slate-400'
+                      }`}>
+                        {tx.status || 'COMPLETED'}
+                      </span>
+                    </td>
                     <td className="px-6 py-4 text-sm text-slate-400">{new Date(tx.createdAt).toLocaleString()}</td>
                   </tr>
                 ))}
@@ -522,6 +619,123 @@ export default function AdminDashboardPage() {
             </div>
           </div>
         </div>
+        )}
+
+        {/* Pending Tab */}
+        {activeTab === 'pending' && (
+          <div className="space-y-6">
+            {/* Pending Deposits */}
+            <div>
+              <h2 className="text-xl font-bold text-white mb-4">Pending Deposits</h2>
+              {pendingDeposits.length === 0 ? (
+                <div className="bg-slate-900 border border-slate-700 rounded-xl p-6 text-center text-slate-400">
+                  No pending deposits
+                </div>
+              ) : (
+                <div className="bg-slate-900 border border-slate-700 rounded-xl overflow-x-auto">
+                  <table className="w-full min-w-[600px]">
+                    <thead className="bg-slate-800">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-semibold text-slate-300 uppercase">User</th>
+                        <th className="px-6 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Amount</th>
+                        <th className="px-6 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Method</th>
+                        <th className="px-6 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Proof</th>
+                        <th className="px-6 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Date</th>
+                        <th className="px-6 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-700">
+                      {pendingDeposits.map((tx) => (
+                        <tr key={tx.id} className="hover:bg-slate-800/50">
+                          <td className="px-6 py-4 text-sm text-slate-300">{tx.user.email}</td>
+                          <td className="px-6 py-4 text-sm font-semibold text-white">{tx.amount.toFixed(2)} ETB</td>
+                          <td className="px-6 py-4 text-sm text-slate-300">{tx.paymentMethod}</td>
+                          <td className="px-6 py-4 text-sm">
+                            {tx.paymentProof && (
+                              <a href={`${API_BASE_URL}${tx.paymentProof}`} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline">
+                                View Proof
+                              </a>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-slate-400">{new Date(tx.createdAt).toLocaleString()}</td>
+                          <td className="px-6 py-4 text-sm flex gap-2">
+                            <button
+                              onClick={() => handleApproveDeposit(tx.id)}
+                              className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 rounded text-white text-sm cursor-pointer"
+                            >
+                              Approve
+                            </button>
+                            <button
+                              onClick={() => {
+                                const note = prompt('Enter rejection reason (optional):');
+                                if (note !== null) handleRejectDeposit(tx.id, note);
+                              }}
+                              className="px-3 py-1 bg-red-600 hover:bg-red-500 rounded text-white text-sm cursor-pointer"
+                            >
+                              Reject
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Pending Withdrawals */}
+            <div>
+              <h2 className="text-xl font-bold text-white mb-4">Pending Withdrawals</h2>
+              {pendingWithdrawals.length === 0 ? (
+                <div className="bg-slate-900 border border-slate-700 rounded-xl p-6 text-center text-slate-400">
+                  No pending withdrawals
+                </div>
+              ) : (
+                <div className="bg-slate-900 border border-slate-700 rounded-xl overflow-x-auto">
+                  <table className="w-full min-w-[600px]">
+                    <thead className="bg-slate-800">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-semibold text-slate-300 uppercase">User</th>
+                        <th className="px-6 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Amount</th>
+                        <th className="px-6 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Method</th>
+                        <th className="px-6 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Account</th>
+                        <th className="px-6 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Date</th>
+                        <th className="px-6 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-700">
+                      {pendingWithdrawals.map((tx) => (
+                        <tr key={tx.id} className="hover:bg-slate-800/50">
+                          <td className="px-6 py-4 text-sm text-slate-300">{tx.user.email}</td>
+                          <td className="px-6 py-4 text-sm font-semibold text-white">{tx.amount.toFixed(2)} ETB</td>
+                          <td className="px-6 py-4 text-sm text-slate-300">{tx.paymentMethod}</td>
+                          <td className="px-6 py-4 text-sm text-slate-300">{tx.accountNumber}</td>
+                          <td className="px-6 py-4 text-sm text-slate-400">{new Date(tx.createdAt).toLocaleString()}</td>
+                          <td className="px-6 py-4 text-sm flex gap-2">
+                            <button
+                              onClick={() => handleApproveWithdrawal(tx.id)}
+                              className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 rounded text-white text-sm cursor-pointer"
+                            >
+                              Approve
+                            </button>
+                            <button
+                              onClick={() => {
+                                const note = prompt('Enter rejection reason (optional):');
+                                if (note !== null) handleRejectWithdrawal(tx.id, note);
+                              }}
+                              className="px-3 py-1 bg-red-600 hover:bg-red-500 rounded text-white text-sm cursor-pointer"
+                            >
+                              Reject
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
         )}
       </div>
     </div>

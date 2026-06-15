@@ -185,7 +185,7 @@ router.get('/transactions', authenticate, requireAdmin, async (req: AuthRequest,
 router.get('/withdrawals/pending', authenticate, requireAdmin, async (req: AuthRequest, res) => {
   try {
     const withdrawals = await prisma.transaction.findMany({
-      where: { type: 'WITHDRAW' },
+      where: { type: 'WITHDRAW', status: 'PENDING' },
       include: {
         user: {
           select: {
@@ -199,6 +199,169 @@ router.get('/withdrawals/pending', authenticate, requireAdmin, async (req: AuthR
     res.json(withdrawals);
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch pending withdrawals' });
+  }
+});
+
+// Get pending deposits
+router.get('/deposits/pending', authenticate, requireAdmin, async (req: AuthRequest, res) => {
+  try {
+    const deposits = await prisma.transaction.findMany({
+      where: { type: 'DEPOSIT', status: 'PENDING' },
+      include: {
+        user: {
+          select: {
+            email: true,
+            phoneNumber: true
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(deposits);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to fetch pending deposits' });
+  }
+});
+
+// Approve withdrawal
+router.post('/withdrawals/:id/approve', authenticate, requireAdmin, async (req: AuthRequest, res) => {
+  try {
+    const transaction = await prisma.transaction.findUnique({
+      where: { id: req.params.id },
+      include: { user: { include: { wallet: true } } }
+    });
+
+    if (!transaction) {
+      return res.status(404).json({ message: 'Transaction not found' });
+    }
+
+    if (transaction.status !== 'PENDING') {
+      return res.status(400).json({ message: 'Transaction is not pending' });
+    }
+
+    if (transaction.type !== 'WITHDRAW') {
+      return res.status(400).json({ message: 'Not a withdrawal transaction' });
+    }
+
+    // Balance already deducted when withdrawal was submitted, just update status
+    await prisma.transaction.update({
+      where: { id: req.params.id },
+      data: { status: 'COMPLETED', updatedAt: new Date() }
+    });
+
+    res.json({ message: 'Withdrawal approved' });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to approve withdrawal' });
+  }
+});
+
+// Reject withdrawal
+router.post('/withdrawals/:id/reject', authenticate, requireAdmin, async (req: AuthRequest, res) => {
+  try {
+    const { adminNote } = req.body;
+
+    const transaction = await prisma.transaction.findUnique({
+      where: { id: req.params.id }
+    });
+
+    if (!transaction) {
+      return res.status(404).json({ message: 'Transaction not found' });
+    }
+
+    if (transaction.status !== 'PENDING') {
+      return res.status(400).json({ message: 'Transaction is not pending' });
+    }
+
+    if (transaction.type !== 'WITHDRAW') {
+      return res.status(400).json({ message: 'Not a withdrawal transaction' });
+    }
+
+    // Refund amount back to wallet and update transaction status
+    await prisma.$transaction([
+      prisma.wallet.update({
+        where: { userId: transaction.userId },
+        data: { balance: { increment: transaction.amount } }
+      }),
+      prisma.transaction.update({
+        where: { id: req.params.id },
+        data: { status: 'REJECTED', adminNote, updatedAt: new Date() }
+      })
+    ]);
+
+    res.json({ message: 'Withdrawal rejected, amount refunded to wallet' });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to reject withdrawal' });
+  }
+});
+
+// Approve deposit
+router.post('/deposits/:id/approve', authenticate, requireAdmin, async (req: AuthRequest, res) => {
+  try {
+    const transaction = await prisma.transaction.findUnique({
+      where: { id: req.params.id },
+      include: { user: { include: { wallet: true } } }
+    });
+
+    if (!transaction) {
+      return res.status(404).json({ message: 'Transaction not found' });
+    }
+
+    if (transaction.status !== 'PENDING') {
+      return res.status(400).json({ message: 'Transaction is not pending' });
+    }
+
+    if (transaction.type !== 'DEPOSIT') {
+      return res.status(400).json({ message: 'Not a deposit transaction' });
+    }
+
+    // Add balance and update transaction status
+    await prisma.$transaction([
+      prisma.wallet.update({
+        where: { userId: transaction.userId },
+        data: { balance: { increment: transaction.amount } }
+      }),
+      prisma.transaction.update({
+        where: { id: req.params.id },
+        data: { status: 'COMPLETED', updatedAt: new Date() }
+      })
+    ]);
+
+    res.json({ message: 'Deposit approved' });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to approve deposit' });
+  }
+});
+
+// Reject deposit
+router.post('/deposits/:id/reject', authenticate, requireAdmin, async (req: AuthRequest, res) => {
+  try {
+    const { adminNote } = req.body;
+
+    const transaction = await prisma.transaction.findUnique({
+      where: { id: req.params.id }
+    });
+
+    if (!transaction) {
+      return res.status(404).json({ message: 'Transaction not found' });
+    }
+
+    if (transaction.status !== 'PENDING') {
+      return res.status(400).json({ message: 'Transaction is not pending' });
+    }
+
+    if (transaction.type !== 'DEPOSIT') {
+      return res.status(400).json({ message: 'Not a deposit transaction' });
+    }
+
+    // Update transaction status to rejected
+    await prisma.transaction.update({
+      where: { id: req.params.id },
+      data: { status: 'REJECTED', adminNote, updatedAt: new Date() }
+    });
+
+    res.json({ message: 'Deposit rejected' });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to reject deposit' });
   }
 });
 

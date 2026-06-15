@@ -1,8 +1,36 @@
 import { Router, Response } from 'express';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import prisma from '../config/db';
+import multer from 'multer';
+import path from 'path';
 
 const router = Router();
+
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: (req: any, file: any, cb: any) => {
+    cb(null, 'uploads/');
+  },
+  filename: (req: any, file: any, cb: any) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ 
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter: (req: any, file: any, cb: any) => {
+    const allowedTypes = /jpeg|jpg|png|gif/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+    if (extname && mimetype) {
+      return cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'));
+    }
+  }
+});
 
 /**
  * @swagger
@@ -49,6 +77,37 @@ router.get('/balance', authenticate, async (req: AuthRequest, res: Response) => 
 
 /**
  * @swagger
+ * /api/wallet/upload:
+ *   post:
+ *     summary: Upload payment proof image
+ *     tags: [Wallet]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required: [file]
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: File uploaded successfully
+ */
+router.post('/upload', authenticate, upload.single('file'), async (req: AuthRequest, res: Response) => {
+  if (!req.file) {
+    return res.status(400).json({ message: 'No file uploaded' });
+  }
+  const fileUrl = `/uploads/${req.file.filename}`;
+  res.json({ fileUrl });
+});
+
+/**
+ * @swagger
  * /api/wallet/deposit:
  *   post:
  *     summary: Deposit chips into the wallet
@@ -85,29 +144,32 @@ router.get('/balance', authenticate, async (req: AuthRequest, res: Response) => 
  */
 router.post('/deposit', authenticate, async (req: AuthRequest, res: Response) => {
   const userId = req.user?.id;
-  const { amount } = req.body;
+  const { amount, paymentMethod, paymentProof } = req.body;
 
   if (!userId) return res.status(401).json({ message: 'Unauthorized' });
   if (!amount || typeof amount !== 'number' || amount <= 0) {
     return res.status(400).json({ message: 'Amount must be a positive number' });
   }
+  if (!paymentMethod || !['CBE', 'TELEBIRR'].includes(paymentMethod)) {
+    return res.status(400).json({ message: 'Payment method is required (CBE or TELEBIRR)' });
+  }
+  if (!paymentProof) {
+    return res.status(400).json({ message: 'Payment proof is required' });
+  }
 
   try {
-    // Perform update and creation in a transaction
-    const [wallet] = await prisma.$transaction([
-      prisma.wallet.update({
-        where: { userId },
-        data: { balance: { increment: amount } },
-      }),
-      prisma.transaction.create({
-        data: {
-          userId,
-          type: 'DEPOSIT',
-          amount,
-        },
-      }),
-    ]);
-    return res.json({ balance: wallet.balance });
+    // Create pending deposit transaction
+    const transaction = await prisma.transaction.create({
+      data: {
+        userId,
+        type: 'DEPOSIT',
+        amount,
+        status: 'PENDING',
+        paymentMethod,
+        paymentProof,
+      },
+    });
+    return res.json({ transaction, message: 'Deposit request submitted. Awaiting admin approval.' });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: 'Server error' });
@@ -144,11 +206,17 @@ router.post('/deposit', authenticate, async (req: AuthRequest, res: Response) =>
  */
 router.post('/withdraw', authenticate, async (req: AuthRequest, res: Response) => {
   const userId = req.user?.id;
-  const { amount } = req.body;
+  const { amount, paymentMethod, accountNumber } = req.body;
 
   if (!userId) return res.status(401).json({ message: 'Unauthorized' });
   if (!amount || typeof amount !== 'number' || amount <= 0) {
     return res.status(400).json({ message: 'Amount must be a positive number' });
+  }
+  if (!paymentMethod || !['CBE', 'TELEBIRR'].includes(paymentMethod)) {
+    return res.status(400).json({ message: 'Payment method is required (CBE or TELEBIRR)' });
+  }
+  if (!accountNumber || !accountNumber.trim()) {
+    return res.status(400).json({ message: 'Account number is required' });
   }
 
   try {
@@ -158,21 +226,24 @@ router.post('/withdraw', authenticate, async (req: AuthRequest, res: Response) =
       return res.status(400).json({ message: 'Insufficient balance' });
     }
 
-    const [updatedWallet] = await prisma.$transaction([
-      prisma.wallet.update({
-        where: { userId },
-        data: { balance: { decrement: amount } },
-      }),
-      prisma.transaction.create({
-        data: {
-          userId,
-          type: 'WITHDRAW',
-          amount,
-        },
-      }),
-    ]);
+    // Deduct balance immediately when creating pending withdrawal
+    await prisma.wallet.update({
+      where: { userId },
+      data: { balance: wallet.balance - amount }
+    });
 
-    return res.json({ balance: updatedWallet.balance });
+    // Create pending withdrawal transaction
+    const transaction = await prisma.transaction.create({
+      data: {
+        userId,
+        type: 'WITHDRAW',
+        amount,
+        status: 'PENDING',
+        paymentMethod,
+        accountNumber: accountNumber.trim(),
+      },
+    });
+    return res.json({ transaction, message: 'Withdrawal request submitted. Amount deducted from wallet. Awaiting admin approval (max 2 hours).' });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: 'Server error' });

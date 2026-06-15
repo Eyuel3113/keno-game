@@ -8,6 +8,7 @@ import VerifyEmailPage from './pages/VerifyEmailPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import { useStore } from './store';
+import { API_BASE_URL } from './config';
 import { walletApi, authApi } from './api';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -28,23 +29,41 @@ interface DepositModalProps {
 }
 
 function DepositModal({ isOpen, onClose }: DepositModalProps) {
+  const { token } = useStore();
   const [depositAmount, setDepositAmount] = useState(100);
-  const [depositMethod, setDepositMethod] = useState<'CBE' | 'Telebirr'>('CBE');
+  const [depositMethod, setDepositMethod] = useState<'CBE' | 'TELEBIRR'>('CBE');
   const [paymentProof, setPaymentProof] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
   const ACCOUNTS = {
-    CBE: '1000123456789',
-    Telebirr: '0911234567'
+    CBE: '1000449794803',
+    TELEBIRR: '0936634537'
   };
 
   if (!isOpen) return null;
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    setMessage({ text: 'Account number copied!', type: 'success' });
-    setTimeout(() => setMessage(null), 2000);
+  const copyToClipboard = async (text: string) => {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        // Fallback for older browsers and non-secure contexts
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-9999px';
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
+      setMessage({ text: 'Account number copied!', type: 'success' });
+      setTimeout(() => setMessage(null), 2000);
+    } catch (err) {
+      setMessage({ text: 'Failed to copy account number', type: 'error' });
+      setTimeout(() => setMessage(null), 2000);
+    }
   };
 
   const handleDeposit = async () => {
@@ -56,16 +75,48 @@ function DepositModal({ isOpen, onClose }: DepositModalProps) {
     setLoading(true);
     setMessage(null);
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setMessage({ text: "Deposit requested successfully!", type: 'success' });
+      // Upload file first
+      const formData = new FormData();
+      formData.append('file', paymentProof);
+      const uploadRes = await fetch(`${API_BASE_URL}/api/wallet/upload`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData
+      });
+      const uploadData = await uploadRes.json();
+      
+      if (!uploadRes.ok) {
+        throw new Error(uploadData.message || 'Upload failed');
+      }
+
+      // Create deposit request
+      const depositRes = await fetch(`${API_BASE_URL}/api/wallet/deposit`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          amount: depositAmount,
+          paymentMethod: depositMethod,
+          paymentProof: uploadData.fileUrl
+        })
+      });
+      const depositData = await depositRes.json();
+
+      if (!depositRes.ok) {
+        throw new Error(depositData.message || 'Deposit failed');
+      }
+
+      setMessage({ text: depositData.message || 'Deposit request submitted successfully!', type: 'success' });
       setTimeout(() => {
         onClose();
         setMessage(null);
         setPaymentProof(null);
       }, 2000);
     } catch (err: unknown) {
-      setMessage({ text: "You can't deposit now, try later", type: 'error' });
+      const msg = (err as { message?: string })?.message || 'Deposit failed. Please try again.';
+      setMessage({ text: msg, type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -113,9 +164,9 @@ function DepositModal({ isOpen, onClose }: DepositModalProps) {
             </button>
             <button
               type="button"
-              onClick={() => setDepositMethod('Telebirr')}
+              onClick={() => setDepositMethod('TELEBIRR')}
               className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                depositMethod === 'Telebirr' ? 'bg-green-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
+                depositMethod === 'TELEBIRR' ? 'bg-green-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
               Telebirr
@@ -588,9 +639,9 @@ interface WithdrawModalProps {
 }
 
 function WithdrawModal({ isOpen, onClose }: WithdrawModalProps) {
-  const { balance, setBalance } = useStore();
+  const { token } = useStore();
   const [withdrawAmount, setWithdrawAmount] = useState(100);
-  const [withdrawMethod, setWithdrawMethod] = useState<'CBE' | 'Telebirr'>('CBE');
+  const [withdrawMethod, setWithdrawMethod] = useState<'CBE' | 'TELEBIRR'>('CBE');
   const [withdrawAccount, setWithdrawAccount] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
@@ -603,24 +654,34 @@ function WithdrawModal({ isOpen, onClose }: WithdrawModalProps) {
       setMessage({ text: 'Please enter your account number.', type: 'error' });
       return;
     }
-    if (withdrawAmount > (balance ?? 0)) {
-      setMessage({ text: 'Insufficient balance.', type: 'error' });
-      return;
-    }
     setLoading(true);
     setMessage(null);
     try {
-      const res = await walletApi.withdraw(withdrawAmount);
-      setBalance(res.data.balance);
-      setMessage({ text: `Withdrawal of ${withdrawAmount} ETB requested!`, type: 'success' });
+      const res = await fetch(`${API_BASE_URL}/api/wallet/withdraw`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          amount: withdrawAmount,
+          paymentMethod: withdrawMethod,
+          accountNumber: withdrawAccount
+        })
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || 'Withdrawal failed');
+      }
+
+      setMessage({ text: data.message || 'Withdrawal request submitted successfully!', type: 'success' });
       setTimeout(() => {
         onClose();
         setMessage(null);
-      }, 1500);
+      }, 2000);
     } catch (err: unknown) {
-      const msg =
-        (err as { response?: { data?: { error?: string } } })?.response?.data?.error ||
-        'Withdrawal failed.';
+      const msg = (err as { message?: string })?.message || 'Withdrawal failed. Please try again.';
       setMessage({ text: msg, type: 'error' });
     } finally {
       setLoading(false);
@@ -673,9 +734,9 @@ function WithdrawModal({ isOpen, onClose }: WithdrawModalProps) {
             </button>
             <button
               type="button"
-              onClick={() => setWithdrawMethod('Telebirr')}
+              onClick={() => setWithdrawMethod('TELEBIRR')}
               className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                withdrawMethod === 'Telebirr' ? 'bg-green-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
+                withdrawMethod === 'TELEBIRR' ? 'bg-green-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
               Telebirr
@@ -688,8 +749,8 @@ function WithdrawModal({ isOpen, onClose }: WithdrawModalProps) {
               type="text"
               value={withdrawAccount}
               onChange={(e) => setWithdrawAccount(e.target.value)}
-              placeholder={withdrawMethod === 'CBE' ? 'e.g. 1000123456789' : 'e.g. 0911234567'}
-              className="w-full bg-slate-850 border border-slate-700/60 rounded-2xl px-4 py-3 text-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all placeholder-slate-600"
+              placeholder={withdrawMethod === 'CBE' ? 'e.g. 1000449794803' : 'e.g. 0936634537'}
+              className="w-full bg-slate-800 border border-slate-700/60 rounded-2xl px-4 py-3 text-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all placeholder-slate-600"
             />
           </div>
 
@@ -738,6 +799,7 @@ interface Transaction {
   type: 'DEPOSIT' | 'WITHDRAW' | 'TRANSFER_SENT' | 'TRANSFER_RECEIVED';
   amount: number;
   description?: string;
+  status?: string;
   createdAt: string;
 }
 
@@ -840,6 +902,10 @@ function TransactionHistoryModal({ isOpen, onClose }: TransactionHistoryModalPro
                   : tx.type === 'TRANSFER_SENT'
                   ? 'Transfer Sent'
                   : 'Transfer Received';
+                
+                const status = tx.status || 'COMPLETED';
+                const isPending = status === 'PENDING';
+                const isRejected = status === 'REJECTED';
 
                 return (
                   <div 
@@ -848,26 +914,32 @@ function TransactionHistoryModal({ isOpen, onClose }: TransactionHistoryModalPro
                   >
                     <div className="flex items-center gap-3">
                       <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black ${
-                        isIncoming 
+                        isPending 
+                          ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
+                          : isRejected
+                          ? 'bg-red-500/10 text-red-400 border border-red-500/20'
+                          : isIncoming 
                           ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
                           : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
                       }`}>
-                        {isIncoming ? 'IN' : 'OUT'}
+                        {isPending ? '⏳' : isRejected ? '✕' : isIncoming ? 'IN' : 'OUT'}
                       </div>
                       <div>
                         <p className="text-xs font-bold text-white">
                           {tx.description || typeLabel}
                         </p>
-                        <p className="text-[9px] sm:text-[10px] text-slate-500 font-semibold font-mono">
-                          {formatDate(tx.createdAt)}
+                        <p className={`text-[9px] sm:text-[10px] font-semibold font-mono ${
+                          isPending ? 'text-yellow-400' : isRejected ? 'text-red-400' : 'text-slate-500'
+                        }`}>
+                          {isPending ? 'Pending' : isRejected ? 'Rejected' : formatDate(tx.createdAt)}
                         </p>
                       </div>
                     </div>
                     <div className="text-right">
                       <p className={`text-xs font-black font-mono ${
-                        isIncoming ? 'text-emerald-400' : 'text-blue-400'
+                        isPending ? 'text-yellow-400' : isRejected ? 'text-red-400' : isIncoming ? 'text-emerald-400' : 'text-blue-400'
                       }`}>
-                        {isIncoming ? '+' : '-'}{tx.amount} ETB
+                        {isPending || isRejected ? '' : (isIncoming ? '+' : '-')}{tx.amount} ETB
                       </p>
                     </div>
                   </div>
