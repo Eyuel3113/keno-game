@@ -1,4 +1,4 @@
-﻿import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import GamePage from './pages/GamePage';
 import LoginPage from './pages/LoginPage';
@@ -29,19 +29,41 @@ interface DepositModalProps {
 
 function DepositModal({ isOpen, onClose }: DepositModalProps) {
   const [depositAmount, setDepositAmount] = useState(100);
+  const [depositMethod, setDepositMethod] = useState<'CBE' | 'Telebirr'>('CBE');
+  const [paymentProof, setPaymentProof] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
+  const ACCOUNTS = {
+    CBE: '1000123456789',
+    Telebirr: '0911234567'
+  };
+
   if (!isOpen) return null;
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setMessage({ text: 'Account number copied!', type: 'success' });
+    setTimeout(() => setMessage(null), 2000);
+  };
 
   const handleDeposit = async () => {
     if (depositAmount <= 0) return;
+    if (!paymentProof) {
+      setMessage({ text: 'Please upload payment proof.', type: 'error' });
+      return;
+    }
     setLoading(true);
     setMessage(null);
     try {
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 1000));
-      setMessage({ text: "You can't deposit now, try later", type: 'error' });
+      setMessage({ text: "Deposit requested successfully!", type: 'success' });
+      setTimeout(() => {
+        onClose();
+        setMessage(null);
+        setPaymentProof(null);
+      }, 2000);
     } catch (err: unknown) {
       setMessage({ text: "You can't deposit now, try later", type: 'error' });
     } finally {
@@ -79,31 +101,70 @@ function DepositModal({ isOpen, onClose }: DepositModalProps) {
 
         {/* Deposit panel */}
         <div className="space-y-4">
-          <div className="grid grid-cols-4 gap-1.5">
-            {[50, 100, 200, 500].map((amt) => (
-              <button
-                key={amt}
-                onClick={() => setDepositAmount(amt)}
-                className={`text-xs py-2 rounded-xl border transition-all font-bold cursor-pointer ${
-                  depositAmount === amt
-                    ? 'bg-emerald-500 border-emerald-400 text-slate-950'
-                    : 'bg-slate-800 border-slate-700/50 text-slate-300 hover:border-emerald-500'
-                }`}
-              >
-                {amt} ETB
-              </button>
-            ))}
+          <div className="flex bg-slate-800/80 p-1 rounded-xl border border-slate-700/40">
+            <button
+              type="button"
+              onClick={() => setDepositMethod('CBE')}
+              className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                depositMethod === 'CBE' ? 'bg-yellow-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              CBE
+            </button>
+            <button
+              type="button"
+              onClick={() => setDepositMethod('Telebirr')}
+              className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                depositMethod === 'Telebirr' ? 'bg-green-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              Telebirr
+            </button>
           </div>
 
-          <div className="relative">
-            <input
-              type="number"
-              value={depositAmount}
-              min={1}
-              onChange={(e) => setDepositAmount(Math.max(1, Number(e.target.value)))}
-              className="w-full bg-slate-800 border border-slate-700/60 rounded-2xl pl-4 pr-12 py-3 text-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
-            />
-            <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-semibold">ETB</span>
+          <div className="bg-slate-800 border border-slate-700/60 rounded-2xl p-4 flex justify-between items-center">
+             <div>
+               <p className="text-xs text-slate-400 mb-1">Deposit to {depositMethod}:</p>
+               <p className="text-sm font-mono text-white font-bold">{ACCOUNTS[depositMethod]}</p>
+             </div>
+             <button 
+               onClick={() => copyToClipboard(ACCOUNTS[depositMethod])}
+               className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs font-bold transition-all cursor-pointer text-white"
+             >
+               📋 Copy
+             </button>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-400 mb-1.5">Amount (ETB)</label>
+            <div className="relative">
+              <input
+                type="number"
+                value={depositAmount}
+                min={1}
+                onChange={(e) => setDepositAmount(Math.max(1, Number(e.target.value)))}
+                className="w-full bg-slate-800 border border-slate-700/60 rounded-2xl pl-4 pr-12 py-3 text-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+              />
+              <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-semibold">ETB</span>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-400 mb-1.5">Upload Payment Proof</label>
+            <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-slate-700/60 border-dashed rounded-2xl cursor-pointer bg-slate-800/50 hover:bg-slate-800 hover:border-emerald-500/50 transition-all group">
+              <div className="flex flex-col items-center justify-center pt-4 pb-4">
+                <span className="text-2xl mb-1 group-hover:scale-110 transition-transform">📤</span>
+                <p className="text-xs font-semibold text-slate-400 group-hover:text-emerald-400 transition-colors">
+                  {paymentProof ? paymentProof.name : "Click to upload proof"}
+                </p>
+              </div>
+              <input
+                type="file"
+                className="hidden"
+                accept="image/*"
+                onChange={(e) => setPaymentProof(e.target.files?.[0] || null)}
+              />
+            </label>
           </div>
 
           <button
@@ -529,6 +590,8 @@ interface WithdrawModalProps {
 function WithdrawModal({ isOpen, onClose }: WithdrawModalProps) {
   const { balance, setBalance } = useStore();
   const [withdrawAmount, setWithdrawAmount] = useState(100);
+  const [withdrawMethod, setWithdrawMethod] = useState<'CBE' | 'Telebirr'>('CBE');
+  const [withdrawAccount, setWithdrawAccount] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
@@ -536,6 +599,10 @@ function WithdrawModal({ isOpen, onClose }: WithdrawModalProps) {
 
   const handleWithdraw = async () => {
     if (withdrawAmount <= 0) return;
+    if (!withdrawAccount.trim()) {
+      setMessage({ text: 'Please enter your account number.', type: 'error' });
+      return;
+    }
     if (withdrawAmount > (balance ?? 0)) {
       setMessage({ text: 'Insufficient balance.', type: 'error' });
       return;
@@ -545,7 +612,7 @@ function WithdrawModal({ isOpen, onClose }: WithdrawModalProps) {
     try {
       const res = await walletApi.withdraw(withdrawAmount);
       setBalance(res.data.balance);
-      setMessage({ text: `-${withdrawAmount} ETB withdrawn successfully!`, type: 'success' });
+      setMessage({ text: `Withdrawal of ${withdrawAmount} ETB requested!`, type: 'success' });
       setTimeout(() => {
         onClose();
         setMessage(null);
@@ -588,31 +655,56 @@ function WithdrawModal({ isOpen, onClose }: WithdrawModalProps) {
         </div>
 
         <div className="space-y-4">
-          <div className="grid grid-cols-4 gap-1.5">
-            {[50, 100, 200, 500].map((amt) => (
-              <button
-                key={amt}
-                onClick={() => setWithdrawAmount(amt)}
-                className={`py-2 px-1 text-xs font-bold rounded-xl transition-all cursor-pointer ${
-                  withdrawAmount === amt
-                    ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20'
-                    : 'bg-slate-800 hover:bg-slate-750 text-slate-300'
-                }`}
-              >
-                {amt} ETB
-              </button>
-            ))}
+          <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-xl">
+            <p className="text-xs text-yellow-200/80 font-medium text-center">
+              ⚠️ Caution: Payment withdraw takes max 2 hours.
+            </p>
           </div>
 
-          <div className="relative">
+          <div className="flex bg-slate-800/80 p-1 rounded-xl border border-slate-700/40">
+            <button
+              type="button"
+              onClick={() => setWithdrawMethod('CBE')}
+              className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                withdrawMethod === 'CBE' ? 'bg-yellow-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              CBE
+            </button>
+            <button
+              type="button"
+              onClick={() => setWithdrawMethod('Telebirr')}
+              className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                withdrawMethod === 'Telebirr' ? 'bg-green-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              Telebirr
+            </button>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-400 mb-1.5">Your {withdrawMethod} Account</label>
             <input
-              type="number"
-              value={withdrawAmount}
-              min={1}
-              onChange={(e) => setWithdrawAmount(Math.max(1, Number(e.target.value)))}
-              className="w-full bg-slate-850 border border-slate-700/60 rounded-2xl pl-4 pr-12 py-3 text-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-bold"
+              type="text"
+              value={withdrawAccount}
+              onChange={(e) => setWithdrawAccount(e.target.value)}
+              placeholder={withdrawMethod === 'CBE' ? 'e.g. 1000123456789' : 'e.g. 0911234567'}
+              className="w-full bg-slate-850 border border-slate-700/60 rounded-2xl px-4 py-3 text-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all placeholder-slate-600"
             />
-            <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-semibold">ETB</span>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-400 mb-1.5">Amount (ETB)</label>
+            <div className="relative">
+              <input
+                type="number"
+                value={withdrawAmount}
+                min={1}
+                onChange={(e) => setWithdrawAmount(Math.max(1, Number(e.target.value)))}
+                className="w-full bg-slate-850 border border-slate-700/60 rounded-2xl pl-4 pr-12 py-3 text-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-bold"
+              />
+              <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-semibold">ETB</span>
+            </div>
           </div>
 
           <button
@@ -620,7 +712,7 @@ function WithdrawModal({ isOpen, onClose }: WithdrawModalProps) {
             disabled={loading}
             className="w-full py-3.5 rounded-2xl text-sm font-extrabold bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-400 hover:to-indigo-400 text-white transition-all shadow-lg shadow-blue-950/50 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
           >
-            {loading ? 'Processing…' : `Confirm ${withdrawAmount} ETB Withdrawal`}
+            {loading ? 'Processing…' : `Request Withdrawal`}
           </button>
 
           {message && (
