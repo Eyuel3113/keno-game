@@ -1174,7 +1174,10 @@ function App() {
 
   const handleTelegramLogin = async (user: any) => {
     try {
+      console.log('Attempting Telegram login for user:', user);
       const initData = window.Telegram?.WebApp.initData;
+      console.log('InitData:', initData);
+      
       const res = await fetch(`${API_BASE_URL}/api/auth/telegram`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1189,13 +1192,19 @@ function App() {
           }
         })
       });
+      
+      console.log('Response status:', res.status);
       const data = await res.json();
+      console.log('Response data:', data);
+      
       if (res.ok && data.token) {
         setToken(data.token);
         localStorage.setItem('token', data.token);
+      } else {
+        console.error('Telegram login failed:', data);
       }
     } catch (err) {
-      console.error('Telegram login failed:', err);
+      console.error('Telegram login error:', err);
     }
   };
 
