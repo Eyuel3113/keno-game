@@ -9,9 +9,9 @@ datasource db {
 
 model User {
   id             String    @id @default(uuid())
-  email          String    @unique
+  email          String?   @unique
   phoneNumber    String?   @unique
-  password       String
+  password       String?
   emailVerified  Boolean   @default(false)
   verifyToken    String?
   verifyExpires  DateTime?
@@ -20,6 +20,12 @@ model User {
   role           String    @default("USER") // USER, ADMIN
   isBanned       Boolean   @default(false)
   banReason      String?
+  // Telegram fields
+  telegramId     String?   @unique
+  telegramUsername String?
+  telegramFirstName String?
+  telegramLastName String?
+  telegramLanguageCode String?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
   wallet         Wallet?

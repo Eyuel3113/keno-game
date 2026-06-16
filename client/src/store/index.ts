@@ -23,6 +23,7 @@ interface GameState {
   // Auth
   user: User | null;
   token: string | null;
+  isTelegram: boolean;
 
   // Wallet
   balance: number;
@@ -48,6 +49,7 @@ interface GameState {
   // Actions
   setUser: (user: User | null) => void;
   setToken: (token: string | null) => void;
+  setIsTelegram: (isTelegram: boolean) => void;
   setBalance: (balance: number) => void;
   setPicks: (picks: number[]) => void;
   setDrawnNumbers: (numbers: number[]) => void;
@@ -66,6 +68,7 @@ export const useStore = create<GameState>()(
     (set) => ({
       user: null,
       token: null,
+      isTelegram: false,
       balance: 0,
       picks: [],
       drawnNumbers: [],
@@ -80,6 +83,7 @@ export const useStore = create<GameState>()(
 
       setUser: (user) => set({ user }),
       setToken: (token) => set({ token }),
+      setIsTelegram: (isTelegram) => set({ isTelegram }),
       setBalance: (balance) => set({ balance }),
       setPicks: (picks) => set({ picks }),
       setDrawnNumbers: (drawnNumbers) => set({ drawnNumbers }),
@@ -94,6 +98,7 @@ export const useStore = create<GameState>()(
         set({
           user: null,
           token: null,
+          isTelegram: false,
           balance: 0,
           picks: [],
           drawnNumbers: [],

@@ -97,6 +97,10 @@ router.post('/login', async (req: Request, res: Response) => {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
+    if (!user.password) {
+      return res.status(401).json({ message: 'Please use Telegram authentication' });
+    }
+
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ message: 'Invalid credentials' });
@@ -292,6 +296,10 @@ router.post('/change-email', authenticate, async (req: AuthRequest, res: Respons
       return res.status(404).json({ message: 'User not found' });
     }
 
+    if (!user.password) {
+      return res.status(400).json({ message: 'Cannot change email for Telegram users' });
+    }
+
     const isMatch = await bcrypt.compare(currentPassword, user.password);
     if (!isMatch) {
       return res.status(400).json({ message: 'Invalid current password' });
@@ -349,6 +357,10 @@ router.post('/change-password', authenticate, async (req: AuthRequest, res: Resp
       return res.status(404).json({ message: 'User not found' });
     }
 
+    if (!user.password) {
+      return res.status(400).json({ message: 'Cannot change password for Telegram users' });
+    }
+
     const isMatch = await bcrypt.compare(currentPassword, user.password);
     if (!isMatch) {
       return res.status(400).json({ message: 'Invalid current password' });
@@ -364,6 +376,99 @@ router.post('/change-password', authenticate, async (req: AuthRequest, res: Resp
     });
 
     return res.json({ message: 'Password changed successfully.' });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ─── Telegram Authentication ───────────────────────────────────────────────────
+router.post('/telegram', async (req: Request, res: Response) => {
+  const { initData, user } = req.body;
+
+  if (!user || !user.id) {
+    return res.status(400).json({ message: 'Telegram user data is required' });
+  }
+
+  try {
+    // For development, we'll skip the init data verification
+    // In production, you should verify the initData using the bot token
+    // const botToken = process.env.TELEGRAM_BOT_TOKEN;
+    // Verify initData here...
+
+    const telegramId = user.id.toString();
+    
+    // Find or create user
+    let existingUser = await prisma.user.findUnique({
+      where: { telegramId },
+      include: { wallet: true },
+    });
+
+    if (existingUser) {
+      // Update user info if changed
+      existingUser = await prisma.user.update({
+        where: { telegramId },
+        data: {
+          telegramUsername: user.username,
+          telegramFirstName: user.first_name,
+          telegramLastName: user.last_name,
+          telegramLanguageCode: user.language_code,
+        },
+        include: { wallet: true },
+      });
+
+      // Generate JWT token
+      const token = jwt.sign(
+        { id: existingUser.id, telegramId: existingUser.telegramId, role: existingUser.role },
+        process.env.JWT_SECRET || 'secret',
+        { expiresIn: '7d' }
+      );
+
+      return res.json({
+        token,
+        user: {
+          id: existingUser.id,
+          telegramId: existingUser.telegramId,
+          telegramUsername: existingUser.telegramUsername,
+          telegramFirstName: existingUser.telegramFirstName,
+          balance: existingUser.wallet?.balance,
+          role: existingUser.role,
+        },
+      });
+    }
+
+    // Create new user
+    const newUser = await prisma.user.create({
+      data: {
+        telegramId,
+        telegramUsername: user.username,
+        telegramFirstName: user.first_name,
+        telegramLastName: user.last_name,
+        telegramLanguageCode: user.language_code,
+        emailVerified: true, // Telegram users are pre-verified
+        wallet: { create: { balance: 50 } },
+      },
+      include: { wallet: true },
+    });
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { id: newUser.id, telegramId: newUser.telegramId, role: newUser.role },
+      process.env.JWT_SECRET || 'secret',
+      { expiresIn: '7d' }
+    );
+
+    return res.json({
+      token,
+      user: {
+        id: newUser.id,
+        telegramId: newUser.telegramId,
+        telegramUsername: newUser.telegramUsername,
+        telegramFirstName: newUser.telegramFirstName,
+        balance: newUser.wallet?.balance,
+        role: newUser.role,
+      },
+    });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: 'Server error' });

@@ -11,14 +11,70 @@ import { useStore } from './store';
 import { API_BASE_URL } from './config';
 import { walletApi, authApi } from './api';
 
+// Telegram Web App types
+declare global {
+  interface Window {
+    Telegram?: {
+      WebApp: {
+        ready: () => void;
+        expand: () => void;
+        enableClosingConfirmation: () => void;
+        initData: string;
+        initDataUnsafe: {
+          user?: {
+            id: number;
+            first_name: string;
+            last_name?: string;
+            username?: string;
+            language_code?: string;
+          };
+          query_id?: string;
+          auth_date?: number;
+          hash?: string;
+        };
+        themeParams: {
+          bg_color: string;
+          text_color: string;
+          hint_color: string;
+          link_color: string;
+          button_color: string;
+          button_text_color: string;
+        };
+        BackButton: {
+          show: () => void;
+          hide: () => void;
+          onClick: (callback: () => void) => void;
+        };
+        MainButton: {
+          setText: (text: string) => void;
+          show: () => void;
+          hide: () => void;
+          onClick: (callback: () => void) => void;
+        };
+      };
+    };
+  }
+}
+
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { token } = useStore();
-  if (!token) return <Navigate to="/login" replace />;
+  const { token, isTelegram } = useStore();
+  if (!token) {
+    // If in Telegram mode and not authenticated, show loading instead of redirect
+    if (isTelegram) {
+      return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">Loading...</div>;
+    }
+    return <Navigate to="/login" replace />;
+  }
   return <>{children}</>;
 }
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
-  const { token } = useStore();
+  const { token, isTelegram } = useStore();
+  // In Telegram mode, skip public routes (login/register) and go directly to app
+  if (isTelegram) {
+    if (token) return <Navigate to="/" replace />;
+    return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">Authenticating...</div>;
+  }
   if (token) return <Navigate to="/" replace />;
   return <>{children}</>;
 }
@@ -1081,12 +1137,67 @@ function Header({ onOpenDeposit, onOpenWithdraw, onOpenHistory, onOpenTransfer, 
 }
 
 function App() {
-  const { token } = useStore();
+  const { token, setToken, setIsTelegram } = useStore();
   const [isDepositOpen, setIsDepositOpen] = useState(false);
   const [isTransferOpen, setIsTransferOpen] = useState(false);
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  useEffect(() => {
+    // Check if running in Telegram
+    if (window.Telegram?.WebApp) {
+      setIsTelegram(true);
+      window.Telegram.WebApp.ready();
+      window.Telegram.WebApp.expand();
+      window.Telegram.WebApp.enableClosingConfirmation();
+
+      // Apply Telegram theme
+      const theme = window.Telegram.WebApp.themeParams;
+      if (theme) {
+        document.documentElement.style.setProperty('--tg-theme-bg-color', theme.bg_color);
+        document.documentElement.style.setProperty('--tg-theme-text-color', theme.text_color);
+        document.documentElement.style.setProperty('--tg-theme-hint-color', theme.hint_color);
+        document.documentElement.style.setProperty('--tg-theme-link-color', theme.link_color);
+        document.documentElement.style.setProperty('--tg-theme-button-color', theme.button_color);
+        document.documentElement.style.setProperty('--tg-theme-button-text-color', theme.button_text_color);
+      }
+
+      // Get Telegram user data
+      const user = window.Telegram.WebApp.initDataUnsafe.user;
+      if (user) {
+        // Auto-login with Telegram
+        handleTelegramLogin(user);
+      }
+    }
+  }, [setIsTelegram]);
+
+  const handleTelegramLogin = async (user: any) => {
+    try {
+      const initData = window.Telegram?.WebApp.initData;
+      const res = await fetch(`${API_BASE_URL}/api/auth/telegram`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          initData,
+          user: {
+            id: user.id,
+            first_name: user.first_name,
+            last_name: user.last_name,
+            username: user.username,
+            language_code: user.language_code
+          }
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.token) {
+        setToken(data.token);
+        localStorage.setItem('token', data.token);
+      }
+    } catch (err) {
+      console.error('Telegram login failed:', err);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white flex flex-col">
