@@ -68,12 +68,31 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-function PublicRoute({ children }: { children: React.ReactNode }) {
+function PublicRoute({ children, authError }: { children: React.ReactNode; authError: string | null }) {
   const { token, isTelegram } = useStore();
   // In Telegram mode, skip public routes (login/register) and go directly to app
   if (isTelegram) {
     if (token) return <Navigate to="/" replace />;
-    return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">Authenticating...</div>;
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white p-4">
+        <div className="text-center max-w-md">
+          {authError ? (
+            <>
+              <div className="text-red-400 text-4xl mb-4">⚠️</div>
+              <p className="text-red-400 font-semibold mb-2">Authentication Error</p>
+              <p className="text-sm text-gray-300 mb-4">{authError}</p>
+              <p className="text-xs text-gray-500">Please try refreshing or contact support</p>
+            </>
+          ) : (
+            <>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+              <p>Authenticating...</p>
+              <p className="text-sm text-gray-400 mt-2">If this takes too long, please try refreshing</p>
+            </>
+          )}
+        </div>
+      </div>
+    );
   }
   if (token) return <Navigate to="/" replace />;
   return <>{children}</>;
@@ -1143,6 +1162,7 @@ function App() {
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
     // Check if running in Telegram
@@ -1168,6 +1188,8 @@ function App() {
       if (user) {
         // Auto-login with Telegram
         handleTelegramLogin(user);
+      } else {
+        setAuthError('No Telegram user data available');
       }
     }
   }, [setIsTelegram]);
@@ -1175,6 +1197,7 @@ function App() {
   const handleTelegramLogin = async (user: any) => {
     try {
       console.log('Attempting Telegram login for user:', user);
+      console.log('API_BASE_URL:', API_BASE_URL);
       const initData = window.Telegram?.WebApp.initData;
       console.log('InitData:', initData);
       
@@ -1200,11 +1223,14 @@ function App() {
       if (res.ok && data.token) {
         setToken(data.token);
         localStorage.setItem('token', data.token);
+        setAuthError(null);
       } else {
         console.error('Telegram login failed:', data);
+        setAuthError(data.message || 'Authentication failed');
       }
     } catch (err) {
       console.error('Telegram login error:', err);
+      setAuthError('Network error. Please check your connection.');
     }
   };
 
@@ -1242,7 +1268,7 @@ function App() {
           <Route
             path="/login"
             element={
-              <PublicRoute>
+              <PublicRoute authError={authError}>
                 <LoginPage />
               </PublicRoute>
             }
@@ -1250,7 +1276,7 @@ function App() {
           <Route
             path="/register"
             element={
-              <PublicRoute>
+              <PublicRoute authError={authError}>
                 <RegisterPage />
               </PublicRoute>
             }
@@ -1258,7 +1284,7 @@ function App() {
           <Route
             path="/forgot-password"
             element={
-              <PublicRoute>
+              <PublicRoute authError={authError}>
                 <ForgotPasswordPage />
               </PublicRoute>
             }
