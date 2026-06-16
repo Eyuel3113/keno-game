@@ -522,6 +522,7 @@ interface SettingsModalProps {
 
 function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const { logout, user } = useStore();
+  const navigate = useNavigate();
   const [view, setView] = useState<'menu' | 'email' | 'password'>('menu');
 
   // Email change state
@@ -648,7 +649,7 @@ function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
             {user?.role === 'ADMIN' && (
               <button
-                onClick={() => window.location.href = '/admin'}
+                onClick={() => { navigate('/admin'); onClose(); }}
                 className="w-full flex items-center gap-4 px-5 py-4 hover:bg-slate-800/60 transition-colors group cursor-pointer"
               >
                 <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-lg flex-shrink-0 group-hover:bg-emerald-500/20 transition-colors">
