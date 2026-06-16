@@ -1097,13 +1097,13 @@ function Header({ onOpenDeposit, onOpenWithdraw, onOpenHistory, onOpenTransfer, 
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 text-sm font-bold text-white hover:scale-105 transition-transform cursor-pointer shadow-md"
             >
-              {user.email[0].toUpperCase()}
+              {user.telegramFirstName ? user.telegramFirstName[0].toUpperCase() : user.email ? user.email[0].toUpperCase() : 'U'}
             </button>
             
             {isMenuOpen && (
               <div className="absolute right-0 mt-2 w-48 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl py-1 z-50 origin-top-right">
                 <div className="px-4 py-2 border-b border-slate-700/50 mb-1">
-                  <p className="text-xs text-slate-400 truncate">{user.email}</p>
+                  <p className="text-xs text-slate-400 truncate">{user.telegramUsername || user.email || 'User'}</p>
                 </div>
                 
                 <button
@@ -1156,7 +1156,7 @@ function Header({ onOpenDeposit, onOpenWithdraw, onOpenHistory, onOpenTransfer, 
 }
 
 function App() {
-  const { token, setToken, setIsTelegram } = useStore();
+  const { token, setToken, setIsTelegram, setUser, setBalance } = useStore();
   const [isDepositOpen, setIsDepositOpen] = useState(false);
   const [isTransferOpen, setIsTransferOpen] = useState(false);
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
@@ -1245,6 +1245,21 @@ function App() {
         localStorage.setItem('token', data.token);
         setAuthError(null);
         console.log('Token set successfully');
+        
+        // Set user data from Telegram authentication response
+        if (data.user) {
+          console.log('Setting user data:', data.user);
+          setUser({
+            id: data.user.id,
+            telegramUsername: data.user.telegramUsername,
+            telegramFirstName: data.user.telegramFirstName,
+            role: data.user.role,
+          });
+          if (data.user.balance !== undefined) {
+            setBalance(data.user.balance);
+          }
+        }
+        
         // Redirect to main page after successful authentication
         navigate('/');
       } else {

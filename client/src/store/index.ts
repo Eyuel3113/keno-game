@@ -15,7 +15,9 @@ export interface BetHistoryItem {
 
 export interface User {
   id: string;
-  email: string;
+  email?: string;
+  telegramUsername?: string;
+  telegramFirstName?: string;
   role?: string;
 }
 
