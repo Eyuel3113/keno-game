@@ -1234,9 +1234,11 @@ function App() {
       console.log('Response data:', data);
       
       if (res.ok && data.token) {
+        console.log('Setting token:', data.token);
         setToken(data.token);
         localStorage.setItem('token', data.token);
         setAuthError(null);
+        console.log('Token set successfully');
       } else {
         console.error('Telegram login failed:', data);
         setAuthError(data.message || 'Authentication failed');
