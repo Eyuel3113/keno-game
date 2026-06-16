@@ -1166,7 +1166,12 @@ function App() {
 
   useEffect(() => {
     // Check if running in Telegram
+    console.log('Checking for Telegram WebApp...');
+    console.log('window.Telegram:', window.Telegram);
+    console.log('window.Telegram?.WebApp:', window.Telegram?.WebApp);
+    
     if (window.Telegram?.WebApp) {
+      console.log('Telegram WebApp detected');
       setIsTelegram(true);
       window.Telegram.WebApp.ready();
       window.Telegram.WebApp.expand();
@@ -1184,13 +1189,21 @@ function App() {
       }
 
       // Get Telegram user data
-      const user = window.Telegram.WebApp.initDataUnsafe.user;
+      const initDataUnsafe = window.Telegram.WebApp.initDataUnsafe;
+      console.log('initDataUnsafe:', initDataUnsafe);
+      const user = initDataUnsafe.user;
+      console.log('Telegram user:', user);
+      
       if (user) {
         // Auto-login with Telegram
+        console.log('Starting Telegram login...');
         handleTelegramLogin(user);
       } else {
-        setAuthError('No Telegram user data available');
+        console.error('No Telegram user data available');
+        setAuthError('No Telegram user data available. Please open this app from Telegram.');
       }
+    } else {
+      console.log('Not running in Telegram WebApp');
     }
   }, [setIsTelegram]);
 

@@ -384,25 +384,31 @@ router.post('/change-password', authenticate, async (req: AuthRequest, res: Resp
 
 // ─── Telegram Authentication ───────────────────────────────────────────────────
 router.post('/telegram', async (req: Request, res: Response) => {
+  console.log('[Telegram Auth] Request received:', req.body);
   const { initData, user } = req.body;
 
   if (!user || !user.id) {
+    console.log('[Telegram Auth] Missing user data');
     return res.status(400).json({ message: 'Telegram user data is required' });
   }
 
   try {
+    console.log('[Telegram Auth] Processing user:', user.id);
     // For development, we'll skip the init data verification
     // In production, you should verify the initData using the bot token
     // const botToken = process.env.TELEGRAM_BOT_TOKEN;
     // Verify initData here...
 
     const telegramId = user.id.toString();
+    console.log('[Telegram Auth] Looking for user with telegramId:', telegramId);
     
     // Find or create user
     let existingUser = await prisma.user.findUnique({
       where: { telegramId },
       include: { wallet: true },
     });
+
+    console.log('[Telegram Auth] Existing user found:', !!existingUser);
 
     if (existingUser) {
       // Update user info if changed
@@ -424,6 +430,7 @@ router.post('/telegram', async (req: Request, res: Response) => {
         { expiresIn: '7d' }
       );
 
+      console.log('[Telegram Auth] User logged in successfully');
       return res.json({
         token,
         user: {
@@ -438,6 +445,7 @@ router.post('/telegram', async (req: Request, res: Response) => {
     }
 
     // Create new user
+    console.log('[Telegram Auth] Creating new user');
     const newUser = await prisma.user.create({
       data: {
         telegramId,
@@ -458,6 +466,7 @@ router.post('/telegram', async (req: Request, res: Response) => {
       { expiresIn: '7d' }
     );
 
+    console.log('[Telegram Auth] New user created successfully');
     return res.json({
       token,
       user: {
@@ -470,8 +479,8 @@ router.post('/telegram', async (req: Request, res: Response) => {
       },
     });
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ message: 'Server error' });
+    console.error('[Telegram Auth] Error:', err);
+    return res.status(500).json({ message: 'Server error', error: String(err) });
   }
 });
 
