@@ -1165,6 +1165,11 @@ function App() {
   const [authError, setAuthError] = useState<string | null>(null);
   const navigate = useNavigate();
 
+  // Log token state changes
+  useEffect(() => {
+    console.log('Token state changed:', token);
+  }, [token]);
+
   useEffect(() => {
     // Check if running in Telegram
     console.log('Checking for Telegram WebApp...');
