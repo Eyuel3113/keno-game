@@ -1163,6 +1163,7 @@ function App() {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     // Check if running in Telegram
@@ -1239,6 +1240,8 @@ function App() {
         localStorage.setItem('token', data.token);
         setAuthError(null);
         console.log('Token set successfully');
+        // Redirect to main page after successful authentication
+        navigate('/');
       } else {
         console.error('Telegram login failed:', data);
         setAuthError(data.message || 'Authentication failed');
