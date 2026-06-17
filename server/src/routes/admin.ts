@@ -3,9 +3,37 @@ import { Router } from 'express';
 import { authenticate, requireAdmin, AuthRequest } from '../middleware/auth';
 import { PrismaClient } from '@prisma/client';
 import { sendTelegramMessageToUser, sendTelegramPhotoToUser, sendTelegramMessageToAdmins, sendTelegramPhotoToAdmins } from '../services/telegramBot';
+import multer from 'multer';
+import path from 'path';
 
 const router = Router();
 const prisma = new PrismaClient();
+
+// Configure multer for photo uploads
+const storage = multer.diskStorage({
+  destination: (req: any, file: any, cb: any) => {
+    cb(null, 'uploads/');
+  },
+  filename: (req: any, file: any, cb: any) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ 
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter: (req: any, file: any, cb: any) => {
+    const allowedTypes = /jpeg|jpg|png|gif/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+    if (extname && mimetype) {
+      return cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'));
+    }
+  }
+});
 
 interface BanRequestBody {
   isBanned: boolean;
@@ -527,9 +555,10 @@ router.get('/activity', authenticate, requireAdmin, async (req: AuthRequest, res
 });
 
 // Send custom message to user
-router.post('/send-message', authenticate, requireAdmin, async (req: AuthRequest, res) => {
+router.post('/send-message', authenticate, requireAdmin, upload.single('photo'), async (req: AuthRequest, res) => {
   try {
-    const { userId, message, photoUrl } = req.body;
+    const { userId, message } = req.body;
+    const photoUrl = req.file ? `/uploads/${req.file.filename}` : null;
 
     if (!userId) {
       return res.status(400).json({ message: 'User ID is required' });
@@ -562,9 +591,10 @@ router.post('/send-message', authenticate, requireAdmin, async (req: AuthRequest
 });
 
 // Send broadcast message to all users
-router.post('/broadcast', authenticate, requireAdmin, async (req: AuthRequest, res) => {
+router.post('/broadcast', authenticate, requireAdmin, upload.single('photo'), async (req: AuthRequest, res) => {
   try {
-    const { message, photoUrl } = req.body;
+    const { message } = req.body;
+    const photoUrl = req.file ? `/uploads/${req.file.filename}` : null;
 
     if (!message && !photoUrl) {
       return res.status(400).json({ message: 'Message or photo is required' });

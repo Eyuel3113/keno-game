@@ -61,7 +61,7 @@ export default function AdminDashboardPage() {
   const [messageType, setMessageType] = useState<'individual' | 'broadcast'>('individual');
   const [selectedUserId, setSelectedUserId] = useState('');
   const [customMessage, setCustomMessage] = useState('');
-  const [photoUrl, setPhotoUrl] = useState('');
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [messageLoading, setMessageLoading] = useState(false);
   const [messageResult, setMessageResult] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [userSearch, setUserSearch] = useState('');
@@ -82,6 +82,23 @@ export default function AdminDashboardPage() {
     }
     fetchData();
   }, [token, navigate, activeTab, search, roleFilter, bannedFilter, typeFilter, page, limit]);
+
+  // Fetch users when switching to messages tab
+  useEffect(() => {
+    if (activeTab === 'messages' && token) {
+      const fetchUsersForMessaging = async () => {
+        try {
+          const headers = { Authorization: `Bearer ${token}` };
+          const res = await fetch(`${API_BASE_URL}/api/admin/users?limit=1000`, { headers });
+          const data = await res.json();
+          setUsers(data.users || []);
+        } catch (error) {
+          console.error('Failed to fetch users for messaging:', error);
+        }
+      };
+      fetchUsersForMessaging();
+    }
+  }, [activeTab, token]);
 
   // Fetch pending data on mount for badge
   useEffect(() => {
@@ -906,13 +923,12 @@ export default function AdminDashboardPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-white mb-2">Photo URL (optional)</label>
+                    <label className="block text-sm font-semibold text-white mb-2">Photo (optional)</label>
                     <input
-                      type="text"
-                      value={photoUrl}
-                      onChange={(e) => setPhotoUrl(e.target.value)}
-                      placeholder="https://example.com/photo.jpg"
-                      className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-3 text-white placeholder-slate-400"
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => setPhotoFile(e.target.files?.[0] || null)}
+                      className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-3 text-white"
                     />
                   </div>
                   <div>
@@ -927,26 +943,32 @@ export default function AdminDashboardPage() {
                   </div>
                   <button
                     onClick={async () => {
-                      if (!selectedUserId || (!customMessage && !photoUrl)) {
-                        setMessageResult({ text: 'Please select a user and enter a message or photo URL', type: 'error' });
+                      if (!selectedUserId || (!customMessage && !photoFile)) {
+                        setMessageResult({ text: 'Please select a user and enter a message or select a photo', type: 'error' });
                         return;
                       }
                       setMessageLoading(true);
                       setMessageResult(null);
                       try {
+                        const formData = new FormData();
+                        formData.append('userId', selectedUserId);
+                        formData.append('message', customMessage);
+                        if (photoFile) {
+                          formData.append('photo', photoFile);
+                        }
+
                         const res = await fetch(`${API_BASE_URL}/api/admin/send-message`, {
                           method: 'POST',
                           headers: {
-                            'Content-Type': 'application/json',
                             Authorization: `Bearer ${token}`,
                           },
-                          body: JSON.stringify({ userId: selectedUserId, message: customMessage, photoUrl }),
+                          body: formData,
                         });
                         const data = await res.json();
                         if (res.ok) {
                           setMessageResult({ text: data.message, type: 'success' });
                           setCustomMessage('');
-                          setPhotoUrl('');
+                          setPhotoFile(null);
                           setSelectedUserId('');
                         } else {
                           setMessageResult({ text: data.message || 'Failed to send message', type: 'error' });
@@ -969,13 +991,12 @@ export default function AdminDashboardPage() {
               {messageType === 'broadcast' && (
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-semibold text-white mb-2">Photo URL (optional)</label>
+                    <label className="block text-sm font-semibold text-white mb-2">Photo (optional)</label>
                     <input
-                      type="text"
-                      value={photoUrl}
-                      onChange={(e) => setPhotoUrl(e.target.value)}
-                      placeholder="https://example.com/photo.jpg"
-                      className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-3 text-white placeholder-slate-400"
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => setPhotoFile(e.target.files?.[0] || null)}
+                      className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-3 text-white"
                     />
                   </div>
                   <div>
@@ -990,26 +1011,31 @@ export default function AdminDashboardPage() {
                   </div>
                   <button
                     onClick={async () => {
-                      if (!customMessage && !photoUrl) {
-                        setMessageResult({ text: 'Please enter a message or photo URL', type: 'error' });
+                      if (!customMessage && !photoFile) {
+                        setMessageResult({ text: 'Please enter a message or select a photo', type: 'error' });
                         return;
                       }
                       setMessageLoading(true);
                       setMessageResult(null);
                       try {
+                        const formData = new FormData();
+                        formData.append('message', customMessage);
+                        if (photoFile) {
+                          formData.append('photo', photoFile);
+                        }
+
                         const res = await fetch(`${API_BASE_URL}/api/admin/broadcast`, {
                           method: 'POST',
                           headers: {
-                            'Content-Type': 'application/json',
                             Authorization: `Bearer ${token}`,
                           },
-                          body: JSON.stringify({ message: customMessage, photoUrl }),
+                          body: formData,
                         });
                         const data = await res.json();
                         if (res.ok) {
                           setMessageResult({ text: data.message, type: 'success' });
                           setCustomMessage('');
-                          setPhotoUrl('');
+                          setPhotoFile(null);
                         } else {
                           setMessageResult({ text: data.message || 'Failed to send broadcast', type: 'error' });
                         }
