@@ -14,8 +14,10 @@ interface Stats {
 
 interface User {
   id: string;
-  email: string;
-  phoneNumber: string | null;
+  email?: string;
+  phoneNumber?: string | null;
+  telegramUsername?: string | null;
+  telegramFirstName?: string | null;
   emailVerified: boolean;
   role: string;
   isBanned: boolean;
@@ -35,7 +37,12 @@ interface Transaction {
   accountNumber: string | null;
   adminNote: string | null;
   createdAt: string;
-  user: { email: string; phoneNumber: string | null };
+  user: { 
+    email?: string; 
+    phoneNumber?: string | null;
+    telegramUsername?: string | null;
+    telegramFirstName?: string | null;
+  };
 }
 
 export default function AdminDashboardPage() {
@@ -256,11 +263,16 @@ export default function AdminDashboardPage() {
           </button>
           <button
             onClick={() => setActiveTab('pending')}
-            className={`px-3 py-2 md:px-4 md:py-2 rounded-lg font-semibold transition-colors text-sm md:text-base whitespace-nowrap ${
+            className={`px-3 py-2 md:px-4 md:py-2 rounded-lg font-semibold transition-colors text-sm md:text-base whitespace-nowrap relative ${
               activeTab === 'pending' ? 'bg-violet-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
             }`}
           >
             Pending
+            {(pendingDeposits.length > 0 || pendingWithdrawals.length > 0) && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                {pendingDeposits.length + pendingWithdrawals.length}
+              </span>
+            )}
           </button>
         </div>
 
@@ -333,7 +345,7 @@ export default function AdminDashboardPage() {
               <table className="w-full min-w-[600px]">
               <thead className="bg-slate-800">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Email</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-300 uppercase">User</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Phone</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Role</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Balance</th>
@@ -344,7 +356,18 @@ export default function AdminDashboardPage() {
               <tbody className="divide-y divide-slate-700">
                 {users.map((user) => (
                   <tr key={user.id} className="hover:bg-slate-800/50">
-                    <td className="px-6 py-4 text-sm text-white">{user.email}</td>
+                    <td className="px-6 py-4 text-sm text-white">
+                      {user.telegramUsername ? (
+                        <div>
+                          <div className="font-semibold">@{user.telegramUsername}</div>
+                          <div className="text-xs text-slate-400">{user.telegramFirstName || ''}</div>
+                        </div>
+                      ) : user.email ? (
+                        user.email
+                      ) : (
+                        '-'
+                      )}
+                    </td>
                     <td className="px-6 py-4 text-sm text-slate-300">{user.phoneNumber || '-'}</td>
                     <td className="px-6 py-4 text-sm">
                       <select
@@ -470,7 +493,18 @@ export default function AdminDashboardPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm font-semibold text-white">{tx.amount.toFixed(2)} ETB</td>
-                    <td className="px-6 py-4 text-sm text-slate-300">{tx.user.email}</td>
+                    <td className="px-6 py-4 text-sm text-slate-300">
+                      {tx.user.telegramUsername ? (
+                        <div>
+                          <div className="font-semibold">@{tx.user.telegramUsername}</div>
+                          <div className="text-xs text-slate-400">{tx.user.telegramFirstName || ''}</div>
+                        </div>
+                      ) : tx.user.email ? (
+                        tx.user.email
+                      ) : (
+                        '-'
+                      )}
+                    </td>
                     <td className="px-6 py-4 text-sm">
                       <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
                         tx.status === 'PENDING' ? 'bg-yellow-500/20 text-yellow-400' :
@@ -566,7 +600,18 @@ export default function AdminDashboardPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm font-semibold text-white">{tx.amount.toFixed(2)} ETB</td>
-                    <td className="px-6 py-4 text-sm text-slate-300">{tx.user.email}</td>
+                    <td className="px-6 py-4 text-sm text-slate-300">
+                      {tx.user.telegramUsername ? (
+                        <div>
+                          <div className="font-semibold">@{tx.user.telegramUsername}</div>
+                          <div className="text-xs text-slate-400">{tx.user.telegramFirstName || ''}</div>
+                        </div>
+                      ) : tx.user.email ? (
+                        tx.user.email
+                      ) : (
+                        '-'
+                      )}
+                    </td>
                     <td className="px-6 py-4 text-sm">
                       <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
                         tx.status === 'PENDING' ? 'bg-yellow-500/20 text-yellow-400' :
@@ -647,7 +692,18 @@ export default function AdminDashboardPage() {
                     <tbody className="divide-y divide-slate-700">
                       {pendingDeposits.map((tx) => (
                         <tr key={tx.id} className="hover:bg-slate-800/50">
-                          <td className="px-6 py-4 text-sm text-slate-300">{tx.user.email}</td>
+                          <td className="px-6 py-4 text-sm text-slate-300">
+                            {tx.user.telegramUsername ? (
+                              <div>
+                                <div className="font-semibold">@{tx.user.telegramUsername}</div>
+                                <div className="text-xs text-slate-400">{tx.user.telegramFirstName || ''}</div>
+                              </div>
+                            ) : tx.user.email ? (
+                              tx.user.email
+                            ) : (
+                              '-'
+                            )}
+                          </td>
                           <td className="px-6 py-4 text-sm font-semibold text-white">{tx.amount.toFixed(2)} ETB</td>
                           <td className="px-6 py-4 text-sm text-slate-300">{tx.paymentMethod}</td>
                           <td className="px-6 py-4 text-sm">
@@ -706,7 +762,18 @@ export default function AdminDashboardPage() {
                     <tbody className="divide-y divide-slate-700">
                       {pendingWithdrawals.map((tx) => (
                         <tr key={tx.id} className="hover:bg-slate-800/50">
-                          <td className="px-6 py-4 text-sm text-slate-300">{tx.user.email}</td>
+                          <td className="px-6 py-4 text-sm text-slate-300">
+                            {tx.user.telegramUsername ? (
+                              <div>
+                                <div className="font-semibold">@{tx.user.telegramUsername}</div>
+                                <div className="text-xs text-slate-400">{tx.user.telegramFirstName || ''}</div>
+                              </div>
+                            ) : tx.user.email ? (
+                              tx.user.email
+                            ) : (
+                              '-'
+                            )}
+                          </td>
                           <td className="px-6 py-4 text-sm font-semibold text-white">{tx.amount.toFixed(2)} ETB</td>
                           <td className="px-6 py-4 text-sm text-slate-300">{tx.paymentMethod}</td>
                           <td className="px-6 py-4 text-sm text-slate-300">{tx.accountNumber}</td>
