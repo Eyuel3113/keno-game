@@ -920,7 +920,6 @@ export default function AdminDashboardPage() {
                         .map((user) => (
                         <option key={user.id} value={user.id}>
                           {user.telegramUsername ? `@${user.telegramUsername}` : user.email || 'Unknown'}
-                          {!user.telegramId && ' (No Telegram)'}
                         </option>
                       ))}
                     </select>
