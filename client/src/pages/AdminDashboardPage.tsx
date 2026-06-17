@@ -80,7 +80,9 @@ export default function AdminDashboardPage() {
       navigate('/login');
       return;
     }
-    fetchData();
+    if (activeTab !== 'messages') {
+      fetchData();
+    }
   }, [token, navigate, activeTab, search, roleFilter, bannedFilter, typeFilter, page, limit]);
 
   // Fetch users when switching to messages tab
@@ -91,6 +93,7 @@ export default function AdminDashboardPage() {
           const headers = { Authorization: `Bearer ${token}` };
           const res = await fetch(`${API_BASE_URL}/api/admin/users?limit=1000`, { headers });
           const data = await res.json();
+          console.log('Fetched users for messaging:', data.users);
           setUsers(data.users || []);
         } catch (error) {
           console.error('Failed to fetch users for messaging:', error);
@@ -909,7 +912,6 @@ export default function AdminDashboardPage() {
                     >
                       <option value="">Select a user...</option>
                       {users
-                        .filter(u => u.telegramId)
                         .filter(u => 
                           !userSearch || 
                           u.telegramUsername?.toLowerCase().includes(userSearch.toLowerCase()) ||
@@ -918,6 +920,7 @@ export default function AdminDashboardPage() {
                         .map((user) => (
                         <option key={user.id} value={user.id}>
                           {user.telegramUsername ? `@${user.telegramUsername}` : user.email || 'Unknown'}
+                          {!user.telegramId && ' (No Telegram)'}
                         </option>
                       ))}
                     </select>
