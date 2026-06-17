@@ -57,7 +57,8 @@ router.get('/users', authenticate, requireAdmin, async (req: AuthRequest, res) =
     if (search) {
       where.OR = [
         { email: { contains: search as string, mode: 'insensitive' } },
-        { phoneNumber: { contains: search as string, mode: 'insensitive' } }
+        { phoneNumber: { contains: search as string, mode: 'insensitive' } },
+        { telegramUsername: { contains: search as string, mode: 'insensitive' } }
       ];
     }
     
@@ -76,6 +77,8 @@ router.get('/users', authenticate, requireAdmin, async (req: AuthRequest, res) =
           id: true,
           email: true,
           phoneNumber: true,
+          telegramUsername: true,
+          telegramFirstName: true,
           emailVerified: true,
           role: true,
           isBanned: true,
@@ -148,7 +151,8 @@ router.get('/transactions', authenticate, requireAdmin, async (req: AuthRequest,
       where.user = {
         OR: [
           { email: { contains: search as string, mode: 'insensitive' } },
-          { phoneNumber: { contains: search as string, mode: 'insensitive' } }
+          { phoneNumber: { contains: search as string, mode: 'insensitive' } },
+          { telegramUsername: { contains: search as string, mode: 'insensitive' } }
         ]
       };
     }
@@ -164,7 +168,9 @@ router.get('/transactions', authenticate, requireAdmin, async (req: AuthRequest,
           user: {
             select: {
               email: true,
-              phoneNumber: true
+              phoneNumber: true,
+              telegramUsername: true,
+              telegramFirstName: true
             }
           }
         },
@@ -190,7 +196,9 @@ router.get('/withdrawals/pending', authenticate, requireAdmin, async (req: AuthR
         user: {
           select: {
             email: true,
-            phoneNumber: true
+            phoneNumber: true,
+            telegramUsername: true,
+            telegramFirstName: true
           }
         }
       },
@@ -211,7 +219,9 @@ router.get('/deposits/pending', authenticate, requireAdmin, async (req: AuthRequ
         user: {
           select: {
             email: true,
-            phoneNumber: true
+            phoneNumber: true,
+            telegramUsername: true,
+            telegramFirstName: true
           }
         }
       },
@@ -403,7 +413,8 @@ router.get('/activity', authenticate, requireAdmin, async (req: AuthRequest, res
       where.user = {
         OR: [
           { email: { contains: search as string, mode: 'insensitive' } },
-          { phoneNumber: { contains: search as string, mode: 'insensitive' } }
+          { phoneNumber: { contains: search as string, mode: 'insensitive' } },
+          { telegramUsername: { contains: search as string, mode: 'insensitive' } }
         ]
       };
     }
@@ -414,7 +425,9 @@ router.get('/activity', authenticate, requireAdmin, async (req: AuthRequest, res
         include: {
           user: {
             select: {
-              email: true
+              email: true,
+              telegramUsername: true,
+              telegramFirstName: true
             }
           }
         },
@@ -431,7 +444,9 @@ router.get('/activity', authenticate, requireAdmin, async (req: AuthRequest, res
         include: {
           user: {
             select: {
-              email: true
+              email: true,
+              telegramUsername: true,
+              telegramFirstName: true
             }
           }
         },
