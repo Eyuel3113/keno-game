@@ -558,7 +558,7 @@ router.get('/activity', authenticate, requireAdmin, async (req: AuthRequest, res
 router.post('/send-message', authenticate, requireAdmin, upload.single('photo'), async (req: AuthRequest, res) => {
   try {
     const { userId, message } = req.body;
-    const photoUrl = req.file ? `/uploads/${req.file.filename}` : null;
+    const photoUrl = req.file ? `${process.env.APP_URL || 'http://localhost:5000'}/uploads/${req.file.filename}` : null;
 
     if (!userId) {
       return res.status(400).json({ message: 'User ID is required' });
@@ -594,7 +594,7 @@ router.post('/send-message', authenticate, requireAdmin, upload.single('photo'),
 router.post('/broadcast', authenticate, requireAdmin, upload.single('photo'), async (req: AuthRequest, res) => {
   try {
     const { message } = req.body;
-    const photoUrl = req.file ? `/uploads/${req.file.filename}` : null;
+    const photoUrl = req.file ? `${process.env.APP_URL || 'http://localhost:5000'}/uploads/${req.file.filename}` : null;
 
     if (!message && !photoUrl) {
       return res.status(400).json({ message: 'Message or photo is required' });

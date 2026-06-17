@@ -13,6 +13,7 @@ import { initGameSocket } from './socket/gameSocket';
 import { swaggerSpec } from './config/swagger';
 import prisma from './config/db';
 import { startGameReminderScheduler } from './services/scheduler';
+import path from 'path';
 
 dotenv.config();
 
