@@ -28,6 +28,14 @@ const io = new Server(server, {
 
 app.use(cors());
 app.use(express.json());
+
+// Ensure uploads directory exists
+import fs from 'fs';
+const uploadsDir = path.join(__dirname, '../uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
 app.use('/uploads', express.static('uploads'));
 
 // Swagger Docs
