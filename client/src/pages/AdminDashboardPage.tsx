@@ -73,6 +73,27 @@ export default function AdminDashboardPage() {
     fetchData();
   }, [token, navigate, activeTab, search, roleFilter, bannedFilter, typeFilter, page, limit]);
 
+  // Fetch pending data on mount for badge
+  useEffect(() => {
+    if (!token) return;
+    const fetchPendingData = async () => {
+      try {
+        const headers = { Authorization: `Bearer ${token}` };
+        const [depositsRes, withdrawalsRes] = await Promise.all([
+          fetch(`${API_BASE_URL}/api/admin/deposits/pending`, { headers }),
+          fetch(`${API_BASE_URL}/api/admin/withdrawals/pending`, { headers })
+        ]);
+        const deposits = await depositsRes.json();
+        const withdrawals = await withdrawalsRes.json();
+        setPendingDeposits(deposits);
+        setPendingWithdrawals(withdrawals);
+      } catch (error) {
+        console.error('Failed to fetch pending data:', error);
+      }
+    };
+    fetchPendingData();
+  }, [token]);
+
   const fetchData = async () => {
     setLoading(true);
     try {

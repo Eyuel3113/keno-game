@@ -521,9 +521,10 @@ interface SettingsModalProps {
 }
 
 function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
-  const { logout, user } = useStore();
+  const { logout, user, token } = useStore();
   const navigate = useNavigate();
   const [view, setView] = useState<'menu' | 'email' | 'password'>('menu');
+  const [pendingCount, setPendingCount] = useState(0);
 
   // Email change state
   const [emailCurrentPassword, setEmailCurrentPassword] = useState('');
@@ -543,8 +544,28 @@ function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       setView('menu');
       setEmailCurrentPassword(''); setNewEmail(''); setEmailMessage(null);
       setPasswordCurrentPassword(''); setNewPassword(''); setConfirmPassword(''); setPasswordMessage(null);
+      
+      // Fetch pending count for admin badge
+      if (user?.role === 'ADMIN' && token) {
+        fetchPendingCount();
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, user, token]);
+
+  const fetchPendingCount = async () => {
+    try {
+      const headers = { Authorization: `Bearer ${token}` };
+      const [depositsRes, withdrawalsRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/api/admin/deposits/pending`, { headers }),
+        fetch(`${API_BASE_URL}/api/admin/withdrawals/pending`, { headers })
+      ]);
+      const deposits = await depositsRes.json();
+      const withdrawals = await withdrawalsRes.json();
+      setPendingCount(deposits.length + withdrawals.length);
+    } catch (error) {
+      console.error('Failed to fetch pending count:', error);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -615,37 +636,42 @@ function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         {/* Menu list */}
         {view === 'menu' && (
           <div className="py-2">
-            <button
-              onClick={() => setView('email')}
-              className="w-full flex items-center gap-4 px-5 py-4 hover:bg-slate-800/60 transition-colors group cursor-pointer"
-            >
-              <div className="w-10 h-10 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-lg flex-shrink-0 group-hover:bg-violet-500/20 transition-colors">
-                ✉️
-              </div>
-              <div className="flex-1 text-left">
-                <p className="text-sm font-bold text-white">Change Email</p>
-                <p className="text-xs text-slate-400">Update your login email address</p>
-              </div>
-              <span className="text-slate-500 group-hover:text-white transition-colors text-xl font-light">›</span>
-            </button>
+            {/* Change Email and Password only for admin users */}
+            {user?.role === 'ADMIN' && (
+              <>
+                <button
+                  onClick={() => setView('email')}
+                  className="w-full flex items-center gap-4 px-5 py-4 hover:bg-slate-800/60 transition-colors group cursor-pointer"
+                >
+                  <div className="w-10 h-10 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-lg flex-shrink-0 group-hover:bg-violet-500/20 transition-colors">
+                    ✉️
+                  </div>
+                  <div className="flex-1 text-left">
+                    <p className="text-sm font-bold text-white">Change Email</p>
+                    <p className="text-xs text-slate-400">Update your login email address</p>
+                  </div>
+                  <span className="text-slate-500 group-hover:text-white transition-colors text-xl font-light">›</span>
+                </button>
 
-            <div className="mx-5 h-px bg-slate-700/40" />
+                <div className="mx-5 h-px bg-slate-700/40" />
 
-            <button
-              onClick={() => setView('password')}
-              className="w-full flex items-center gap-4 px-5 py-4 hover:bg-slate-800/60 transition-colors group cursor-pointer"
-            >
-              <div className="w-10 h-10 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-lg flex-shrink-0 group-hover:bg-blue-500/20 transition-colors">
-                🔒
-              </div>
-              <div className="flex-1 text-left">
-                <p className="text-sm font-bold text-white">Change Password</p>
-                <p className="text-xs text-slate-400">Set a new secure password</p>
-              </div>
-              <span className="text-slate-500 group-hover:text-white transition-colors text-xl font-light">›</span>
-            </button>
+                <button
+                  onClick={() => setView('password')}
+                  className="w-full flex items-center gap-4 px-5 py-4 hover:bg-slate-800/60 transition-colors group cursor-pointer"
+                >
+                  <div className="w-10 h-10 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-lg flex-shrink-0 group-hover:bg-blue-500/20 transition-colors">
+                    🔒
+                  </div>
+                  <div className="flex-1 text-left">
+                    <p className="text-sm font-bold text-white">Change Password</p>
+                    <p className="text-xs text-slate-400">Set a new secure password</p>
+                  </div>
+                  <span className="text-slate-500 group-hover:text-white transition-colors text-xl font-light">›</span>
+                </button>
 
-            <div className="mx-5 h-px bg-slate-700/40" />
+                <div className="mx-5 h-px bg-slate-700/40" />
+              </>
+            )}
 
             {user?.role === 'ADMIN' && (
               <button
@@ -659,6 +685,11 @@ function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   <p className="text-sm font-bold text-white">Admin Dashboard</p>
                   <p className="text-xs text-slate-400">Manage users and settings</p>
                 </div>
+                {pendingCount > 0 && (
+                  <span className="bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                    {pendingCount}
+                  </span>
+                )}
                 <span className="text-slate-500 group-hover:text-white transition-colors text-xl font-light">›</span>
               </button>
             )}
@@ -1131,21 +1162,26 @@ function Header({ onOpenDeposit, onOpenWithdraw, onOpenHistory, onOpenTransfer, 
                 >
                   <span className="opacity-70">📜</span> Transaction History
                 </button>
-                <button
-                  onClick={() => { onOpenSettings(); setIsMenuOpen(false); }}
-                  className="w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-slate-700/50 transition-colors flex items-center gap-2 cursor-pointer"
-                >
-                  <span className="opacity-70">⚙️</span> Settings
-                </button>
-                
-                <div className="border-t border-slate-700/50 mt-1 pt-1">
-                  <button
-                    onClick={handleLogout}
-                    className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 transition-colors flex items-center gap-2 cursor-pointer"
-                  >
-                    <span className="opacity-70">🚪</span> Sign Out
-                  </button>
-                </div>
+                {/* Settings and Sign Out only for admin users */}
+                {user?.role === 'ADMIN' && (
+                  <>
+                    <button
+                      onClick={() => { onOpenSettings(); setIsMenuOpen(false); }}
+                      className="w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-slate-700/50 transition-colors flex items-center gap-2 cursor-pointer"
+                    >
+                      <span className="opacity-70">⚙️</span> Settings
+                    </button>
+                    
+                    <div className="border-t border-slate-700/50 mt-1 pt-1">
+                      <button
+                        onClick={handleLogout}
+                        className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 transition-colors flex items-center gap-2 cursor-pointer"
+                      >
+                        <span className="opacity-70">🚪</span> Sign Out
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </div>
