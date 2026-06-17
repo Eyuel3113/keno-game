@@ -2,7 +2,7 @@
 import { Router } from 'express';
 import { authenticate, requireAdmin, AuthRequest } from '../middleware/auth';
 import { PrismaClient } from '@prisma/client';
-import { sendTelegramMessageToUser, sendTelegramMessageToAdmins } from '../services/telegramBot';
+import { sendTelegramMessageToUser, sendTelegramPhotoToUser, sendTelegramMessageToAdmins, sendTelegramPhotoToAdmins } from '../services/telegramBot';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -529,10 +529,14 @@ router.get('/activity', authenticate, requireAdmin, async (req: AuthRequest, res
 // Send custom message to user
 router.post('/send-message', authenticate, requireAdmin, async (req: AuthRequest, res) => {
   try {
-    const { userId, message } = req.body;
+    const { userId, message, photoUrl } = req.body;
 
-    if (!userId || !message) {
-      return res.status(400).json({ message: 'User ID and message are required' });
+    if (!userId) {
+      return res.status(400).json({ message: 'User ID is required' });
+    }
+
+    if (!message && !photoUrl) {
+      return res.status(400).json({ message: 'Message or photo is required' });
     }
 
     const user = await prisma.user.findUnique({ where: { id: userId } });
@@ -545,7 +549,12 @@ router.post('/send-message', authenticate, requireAdmin, async (req: AuthRequest
       return res.status(400).json({ message: 'User does not have Telegram linked' });
     }
 
-    await sendTelegramMessageToUser(user.telegramId, message);
+    if (photoUrl) {
+      await sendTelegramPhotoToUser(user.telegramId, photoUrl, message);
+    } else {
+      await sendTelegramMessageToUser(user.telegramId, message);
+    }
+    
     res.json({ message: 'Message sent successfully' });
   } catch (error) {
     res.status(500).json({ message: 'Failed to send message' });
@@ -555,10 +564,10 @@ router.post('/send-message', authenticate, requireAdmin, async (req: AuthRequest
 // Send broadcast message to all users
 router.post('/broadcast', authenticate, requireAdmin, async (req: AuthRequest, res) => {
   try {
-    const { message } = req.body;
+    const { message, photoUrl } = req.body;
 
-    if (!message) {
-      return res.status(400).json({ message: 'Message is required' });
+    if (!message && !photoUrl) {
+      return res.status(400).json({ message: 'Message or photo is required' });
     }
 
     const users = await prisma.user.findMany({
@@ -573,7 +582,11 @@ router.post('/broadcast', authenticate, requireAdmin, async (req: AuthRequest, r
 
     for (const user of users) {
       if (user.telegramId) {
-        await sendTelegramMessageToUser(user.telegramId, message);
+        if (photoUrl) {
+          await sendTelegramPhotoToUser(user.telegramId, photoUrl, message);
+        } else {
+          await sendTelegramMessageToUser(user.telegramId, message);
+        }
       }
     }
 

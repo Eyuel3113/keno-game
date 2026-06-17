@@ -61,8 +61,10 @@ export default function AdminDashboardPage() {
   const [messageType, setMessageType] = useState<'individual' | 'broadcast'>('individual');
   const [selectedUserId, setSelectedUserId] = useState('');
   const [customMessage, setCustomMessage] = useState('');
+  const [photoUrl, setPhotoUrl] = useState('');
   const [messageLoading, setMessageLoading] = useState(false);
   const [messageResult, setMessageResult] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [userSearch, setUserSearch] = useState('');
 
   // Search, filter, and pagination state
   const [search, setSearch] = useState('');
@@ -872,6 +874,16 @@ export default function AdminDashboardPage() {
               {messageType === 'individual' && (
                 <div className="space-y-4">
                   <div>
+                    <label className="block text-sm font-semibold text-white mb-2">Search User</label>
+                    <input
+                      type="text"
+                      value={userSearch}
+                      onChange={(e) => setUserSearch(e.target.value)}
+                      placeholder="Search by username or email..."
+                      className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-3 text-white placeholder-slate-400"
+                    />
+                  </div>
+                  <div>
                     <label className="block text-sm font-semibold text-white mb-2">Select User</label>
                     <select
                       value={selectedUserId}
@@ -879,7 +891,14 @@ export default function AdminDashboardPage() {
                       className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-3 text-white"
                     >
                       <option value="">Select a user...</option>
-                      {users.filter(u => u.telegramId).map((user) => (
+                      {users
+                        .filter(u => u.telegramId)
+                        .filter(u => 
+                          !userSearch || 
+                          u.telegramUsername?.toLowerCase().includes(userSearch.toLowerCase()) ||
+                          u.email?.toLowerCase().includes(userSearch.toLowerCase())
+                        )
+                        .map((user) => (
                         <option key={user.id} value={user.id}>
                           {user.telegramUsername ? `@${user.telegramUsername}` : user.email || 'Unknown'}
                         </option>
@@ -887,7 +906,17 @@ export default function AdminDashboardPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-white mb-2">Message</label>
+                    <label className="block text-sm font-semibold text-white mb-2">Photo URL (optional)</label>
+                    <input
+                      type="text"
+                      value={photoUrl}
+                      onChange={(e) => setPhotoUrl(e.target.value)}
+                      placeholder="https://example.com/photo.jpg"
+                      className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-3 text-white placeholder-slate-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-white mb-2">Message (optional if photo provided)</label>
                     <textarea
                       value={customMessage}
                       onChange={(e) => setCustomMessage(e.target.value)}
@@ -898,8 +927,8 @@ export default function AdminDashboardPage() {
                   </div>
                   <button
                     onClick={async () => {
-                      if (!selectedUserId || !customMessage) {
-                        setMessageResult({ text: 'Please select a user and enter a message', type: 'error' });
+                      if (!selectedUserId || (!customMessage && !photoUrl)) {
+                        setMessageResult({ text: 'Please select a user and enter a message or photo URL', type: 'error' });
                         return;
                       }
                       setMessageLoading(true);
@@ -911,12 +940,13 @@ export default function AdminDashboardPage() {
                             'Content-Type': 'application/json',
                             Authorization: `Bearer ${token}`,
                           },
-                          body: JSON.stringify({ userId: selectedUserId, message: customMessage }),
+                          body: JSON.stringify({ userId: selectedUserId, message: customMessage, photoUrl }),
                         });
                         const data = await res.json();
                         if (res.ok) {
                           setMessageResult({ text: data.message, type: 'success' });
                           setCustomMessage('');
+                          setPhotoUrl('');
                           setSelectedUserId('');
                         } else {
                           setMessageResult({ text: data.message || 'Failed to send message', type: 'error' });
@@ -939,7 +969,17 @@ export default function AdminDashboardPage() {
               {messageType === 'broadcast' && (
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-semibold text-white mb-2">Message</label>
+                    <label className="block text-sm font-semibold text-white mb-2">Photo URL (optional)</label>
+                    <input
+                      type="text"
+                      value={photoUrl}
+                      onChange={(e) => setPhotoUrl(e.target.value)}
+                      placeholder="https://example.com/photo.jpg"
+                      className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-3 text-white placeholder-slate-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-white mb-2">Message (optional if photo provided)</label>
                     <textarea
                       value={customMessage}
                       onChange={(e) => setCustomMessage(e.target.value)}
@@ -950,8 +990,8 @@ export default function AdminDashboardPage() {
                   </div>
                   <button
                     onClick={async () => {
-                      if (!customMessage) {
-                        setMessageResult({ text: 'Please enter a message', type: 'error' });
+                      if (!customMessage && !photoUrl) {
+                        setMessageResult({ text: 'Please enter a message or photo URL', type: 'error' });
                         return;
                       }
                       setMessageLoading(true);
@@ -963,12 +1003,13 @@ export default function AdminDashboardPage() {
                             'Content-Type': 'application/json',
                             Authorization: `Bearer ${token}`,
                           },
-                          body: JSON.stringify({ message: customMessage }),
+                          body: JSON.stringify({ message: customMessage, photoUrl }),
                         });
                         const data = await res.json();
                         if (res.ok) {
                           setMessageResult({ text: data.message, type: 'success' });
                           setCustomMessage('');
+                          setPhotoUrl('');
                         } else {
                           setMessageResult({ text: data.message || 'Failed to send broadcast', type: 'error' });
                         }
