@@ -3,6 +3,7 @@ import { authenticate, AuthRequest } from '../middleware/auth';
 import prisma from '../config/db';
 import multer from 'multer';
 import path from 'path';
+import { sendTelegramMessageToUser, sendTelegramMessageToAdmins } from '../services/telegramBot';
 
 const router = Router();
 
@@ -158,6 +159,9 @@ router.post('/deposit', authenticate, async (req: AuthRequest, res: Response) =>
   }
 
   try {
+    // Get user details for notification
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    
     // Create pending deposit transaction
     const transaction = await prisma.transaction.create({
       data: {
@@ -169,6 +173,26 @@ router.post('/deposit', authenticate, async (req: AuthRequest, res: Response) =>
         paymentProof,
       },
     });
+
+    // Send notification to admins
+    const admins = await prisma.user.findMany({ where: { role: 'ADMIN' } });
+    const adminTelegramIds = admins
+      .map(admin => admin.telegramId)
+      .filter((id): id is string => id !== null);
+    
+    if (adminTelegramIds.length > 0) {
+      const message = `
+<b>🔔 New Deposit Request</b>
+
+User: ${user?.telegramUsername ? `@${user.telegramUsername}` : user?.email || 'Unknown'}
+Amount: ${amount} ETB
+Method: ${paymentMethod}
+
+Please review and approve in the admin dashboard.
+      `.trim();
+      await sendTelegramMessageToAdmins(message, adminTelegramIds);
+    }
+
     return res.json({ transaction, message: 'Deposit request submitted. Awaiting admin approval.' });
   } catch (err) {
     console.error(err);
@@ -226,6 +250,9 @@ router.post('/withdraw', authenticate, async (req: AuthRequest, res: Response) =
       return res.status(400).json({ message: 'Insufficient balance' });
     }
 
+    // Get user details for notification
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+
     // Deduct balance immediately when creating pending withdrawal
     await prisma.wallet.update({
       where: { userId },
@@ -243,6 +270,27 @@ router.post('/withdraw', authenticate, async (req: AuthRequest, res: Response) =
         accountNumber: accountNumber.trim(),
       },
     });
+
+    // Send notification to admins
+    const admins = await prisma.user.findMany({ where: { role: 'ADMIN' } });
+    const adminTelegramIds = admins
+      .map(admin => admin.telegramId)
+      .filter((id): id is string => id !== null);
+    
+    if (adminTelegramIds.length > 0) {
+      const message = `
+<b>🔔 New Withdrawal Request</b>
+
+User: ${user?.telegramUsername ? `@${user.telegramUsername}` : user?.email || 'Unknown'}
+Amount: ${amount} ETB
+Method: ${paymentMethod}
+Account: ${accountNumber}
+
+Please review and approve in the admin dashboard.
+      `.trim();
+      await sendTelegramMessageToAdmins(message, adminTelegramIds);
+    }
+
     return res.json({ transaction, message: 'Withdrawal request submitted. Amount deducted from wallet. Awaiting admin approval (max 2 hours).' });
   } catch (err) {
     console.error(err);

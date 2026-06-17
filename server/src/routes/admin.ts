@@ -2,6 +2,7 @@
 import { Router } from 'express';
 import { authenticate, requireAdmin, AuthRequest } from '../middleware/auth';
 import { PrismaClient } from '@prisma/client';
+import { sendTelegramMessageToUser, sendTelegramMessageToAdmins } from '../services/telegramBot';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -259,6 +260,18 @@ router.post('/withdrawals/:id/approve', authenticate, requireAdmin, async (req: 
       data: { status: 'COMPLETED', updatedAt: new Date() }
     });
 
+    // Send notification to user
+    if (transaction.user.telegramId) {
+      const message = `
+<b>✅ Withdrawal Approved</b>
+
+Your withdrawal of ${transaction.amount} ETB has been approved and processed.
+
+Thank you for using our service!
+      `.trim();
+      await sendTelegramMessageToUser(transaction.user.telegramId, message);
+    }
+
     res.json({ message: 'Withdrawal approved' });
   } catch (error) {
     res.status(500).json({ message: 'Failed to approve withdrawal' });
@@ -271,7 +284,8 @@ router.post('/withdrawals/:id/reject', authenticate, requireAdmin, async (req: A
     const { adminNote } = req.body;
 
     const transaction = await prisma.transaction.findUnique({
-      where: { id: req.params.id }
+      where: { id: req.params.id },
+      include: { user: true }
     });
 
     if (!transaction) {
@@ -297,6 +311,19 @@ router.post('/withdrawals/:id/reject', authenticate, requireAdmin, async (req: A
         data: { status: 'REJECTED', adminNote, updatedAt: new Date() }
       })
     ]);
+
+    // Send notification to user
+    if (transaction.user.telegramId) {
+      const message = `
+<b>❌ Withdrawal Rejected</b>
+
+Your withdrawal of ${transaction.amount} ETB has been rejected.
+${adminNote ? `Reason: ${adminNote}` : ''}
+
+The amount has been refunded to your wallet.
+      `.trim();
+      await sendTelegramMessageToUser(transaction.user.telegramId, message);
+    }
 
     res.json({ message: 'Withdrawal rejected, amount refunded to wallet' });
   } catch (error) {
@@ -336,6 +363,20 @@ router.post('/deposits/:id/approve', authenticate, requireAdmin, async (req: Aut
       })
     ]);
 
+    // Send notification to user
+    if (transaction.user.telegramId) {
+      const message = `
+<b>✅ Deposit Approved</b>
+
+Your deposit of ${transaction.amount} ETB has been approved and added to your wallet.
+
+New balance: ${transaction.user.wallet.balance + transaction.amount} ETB
+
+Thank you for using our service!
+      `.trim();
+      await sendTelegramMessageToUser(transaction.user.telegramId, message);
+    }
+
     res.json({ message: 'Deposit approved' });
   } catch (error) {
     res.status(500).json({ message: 'Failed to approve deposit' });
@@ -348,7 +389,8 @@ router.post('/deposits/:id/reject', authenticate, requireAdmin, async (req: Auth
     const { adminNote } = req.body;
 
     const transaction = await prisma.transaction.findUnique({
-      where: { id: req.params.id }
+      where: { id: req.params.id },
+      include: { user: true }
     });
 
     if (!transaction) {
@@ -368,6 +410,19 @@ router.post('/deposits/:id/reject', authenticate, requireAdmin, async (req: Auth
       where: { id: req.params.id },
       data: { status: 'REJECTED', adminNote, updatedAt: new Date() }
     });
+
+    // Send notification to user
+    if (transaction.user.telegramId) {
+      const message = `
+<b>❌ Deposit Rejected</b>
+
+Your deposit of ${transaction.amount} ETB has been rejected.
+${adminNote ? `Reason: ${adminNote}` : ''}
+
+Please contact support if you have any questions.
+      `.trim();
+      await sendTelegramMessageToUser(transaction.user.telegramId, message);
+    }
 
     res.json({ message: 'Deposit rejected' });
   } catch (error) {
@@ -468,6 +523,63 @@ router.get('/activity', authenticate, requireAdmin, async (req: AuthRequest, res
     });
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch activity' });
+  }
+});
+
+// Send custom message to user
+router.post('/send-message', authenticate, requireAdmin, async (req: AuthRequest, res) => {
+  try {
+    const { userId, message } = req.body;
+
+    if (!userId || !message) {
+      return res.status(400).json({ message: 'User ID and message are required' });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (!user.telegramId) {
+      return res.status(400).json({ message: 'User does not have Telegram linked' });
+    }
+
+    await sendTelegramMessageToUser(user.telegramId, message);
+    res.json({ message: 'Message sent successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to send message' });
+  }
+});
+
+// Send broadcast message to all users
+router.post('/broadcast', authenticate, requireAdmin, async (req: AuthRequest, res) => {
+  try {
+    const { message } = req.body;
+
+    if (!message) {
+      return res.status(400).json({ message: 'Message is required' });
+    }
+
+    const users = await prisma.user.findMany({
+      where: {
+        telegramId: { not: null },
+        isBanned: false,
+      },
+      select: {
+        telegramId: true,
+      },
+    });
+
+    for (const user of users) {
+      if (user.telegramId) {
+        await sendTelegramMessageToUser(user.telegramId, message);
+      }
+    }
+
+    res.json({ message: `Broadcast sent to ${users.length} users` });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to send broadcast' });
   }
 });
 

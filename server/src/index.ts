@@ -12,6 +12,7 @@ import adminRoutes from './routes/admin';
 import { initGameSocket } from './socket/gameSocket';
 import { swaggerSpec } from './config/swagger';
 import prisma from './config/db';
+import { startGameReminderScheduler } from './services/scheduler';
 
 dotenv.config();
 
@@ -45,6 +46,9 @@ const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+
+  // Start game reminder scheduler
+  startGameReminderScheduler();
 
   // Keep-alive ping every 4 minutes to prevent Neon free-tier from suspending
   setInterval(async () => {

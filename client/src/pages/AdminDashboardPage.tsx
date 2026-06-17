@@ -16,6 +16,7 @@ interface User {
   id: string;
   email?: string;
   phoneNumber?: string | null;
+  telegramId?: string | null;
   telegramUsername?: string | null;
   telegramFirstName?: string | null;
   emailVerified: boolean;
@@ -48,13 +49,20 @@ interface Transaction {
 export default function AdminDashboardPage() {
   const navigate = useNavigate();
   const { token } = useStore();
-  const [activeTab, setActiveTab] = useState<'stats' | 'users' | 'transactions' | 'activity' | 'pending'>('stats');
+  const [activeTab, setActiveTab] = useState<'stats' | 'users' | 'transactions' | 'activity' | 'pending' | 'messages'>('stats');
   const [stats, setStats] = useState<Stats | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [pendingDeposits, setPendingDeposits] = useState<Transaction[]>([]);
   const [pendingWithdrawals, setPendingWithdrawals] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Messaging state
+  const [messageType, setMessageType] = useState<'individual' | 'broadcast'>('individual');
+  const [selectedUserId, setSelectedUserId] = useState('');
+  const [customMessage, setCustomMessage] = useState('');
+  const [messageLoading, setMessageLoading] = useState(false);
+  const [messageResult, setMessageResult] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
   // Search, filter, and pagination state
   const [search, setSearch] = useState('');
@@ -294,6 +302,14 @@ export default function AdminDashboardPage() {
                 {pendingDeposits.length + pendingWithdrawals.length}
               </span>
             )}
+          </button>
+          <button
+            onClick={() => setActiveTab('messages')}
+            className={`px-3 py-2 md:px-4 md:py-2 rounded-lg font-semibold transition-colors text-sm md:text-base whitespace-nowrap ${
+              activeTab === 'messages' ? 'bg-violet-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+            }`}
+          >
+            Messages
           </button>
         </div>
 
@@ -820,6 +836,162 @@ export default function AdminDashboardPage() {
                       ))}
                     </tbody>
                   </table>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Messages Tab */}
+        {activeTab === 'messages' && (
+          <div className="space-y-6">
+            <div className="bg-slate-900 border border-slate-700 rounded-xl p-6">
+              <h2 className="text-xl font-bold text-white mb-4">Send Telegram Messages</h2>
+              
+              {/* Message Type Toggle */}
+              <div className="flex gap-4 mb-6">
+                <button
+                  onClick={() => setMessageType('individual')}
+                  className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
+                    messageType === 'individual' ? 'bg-violet-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                  }`}
+                >
+                  Send to Individual User
+                </button>
+                <button
+                  onClick={() => setMessageType('broadcast')}
+                  className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
+                    messageType === 'broadcast' ? 'bg-violet-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                  }`}
+                >
+                  Broadcast to All Users
+                </button>
+              </div>
+
+              {/* Individual User Message */}
+              {messageType === 'individual' && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-white mb-2">Select User</label>
+                    <select
+                      value={selectedUserId}
+                      onChange={(e) => setSelectedUserId(e.target.value)}
+                      className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-3 text-white"
+                    >
+                      <option value="">Select a user...</option>
+                      {users.filter(u => u.telegramId).map((user) => (
+                        <option key={user.id} value={user.id}>
+                          {user.telegramUsername ? `@${user.telegramUsername}` : user.email || 'Unknown'}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-white mb-2">Message</label>
+                    <textarea
+                      value={customMessage}
+                      onChange={(e) => setCustomMessage(e.target.value)}
+                      placeholder="Enter your message..."
+                      rows={4}
+                      className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-3 text-white placeholder-slate-400"
+                    />
+                  </div>
+                  <button
+                    onClick={async () => {
+                      if (!selectedUserId || !customMessage) {
+                        setMessageResult({ text: 'Please select a user and enter a message', type: 'error' });
+                        return;
+                      }
+                      setMessageLoading(true);
+                      setMessageResult(null);
+                      try {
+                        const res = await fetch(`${API_BASE_URL}/api/admin/send-message`, {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${token}`,
+                          },
+                          body: JSON.stringify({ userId: selectedUserId, message: customMessage }),
+                        });
+                        const data = await res.json();
+                        if (res.ok) {
+                          setMessageResult({ text: data.message, type: 'success' });
+                          setCustomMessage('');
+                          setSelectedUserId('');
+                        } else {
+                          setMessageResult({ text: data.message || 'Failed to send message', type: 'error' });
+                        }
+                      } catch (error) {
+                        setMessageResult({ text: 'Failed to send message', type: 'error' });
+                      } finally {
+                        setMessageLoading(false);
+                      }
+                    }}
+                    disabled={messageLoading}
+                    className="px-6 py-3 bg-violet-600 hover:bg-violet-500 rounded-lg text-white font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {messageLoading ? 'Sending...' : 'Send Message'}
+                  </button>
+                </div>
+              )}
+
+              {/* Broadcast Message */}
+              {messageType === 'broadcast' && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-white mb-2">Message</label>
+                    <textarea
+                      value={customMessage}
+                      onChange={(e) => setCustomMessage(e.target.value)}
+                      placeholder="Enter your broadcast message..."
+                      rows={4}
+                      className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-3 text-white placeholder-slate-400"
+                    />
+                  </div>
+                  <button
+                    onClick={async () => {
+                      if (!customMessage) {
+                        setMessageResult({ text: 'Please enter a message', type: 'error' });
+                        return;
+                      }
+                      setMessageLoading(true);
+                      setMessageResult(null);
+                      try {
+                        const res = await fetch(`${API_BASE_URL}/api/admin/broadcast`, {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${token}`,
+                          },
+                          body: JSON.stringify({ message: customMessage }),
+                        });
+                        const data = await res.json();
+                        if (res.ok) {
+                          setMessageResult({ text: data.message, type: 'success' });
+                          setCustomMessage('');
+                        } else {
+                          setMessageResult({ text: data.message || 'Failed to send broadcast', type: 'error' });
+                        }
+                      } catch (error) {
+                        setMessageResult({ text: 'Failed to send broadcast', type: 'error' });
+                      } finally {
+                        setMessageLoading(false);
+                      }
+                    }}
+                    disabled={messageLoading}
+                    className="px-6 py-3 bg-violet-600 hover:bg-violet-500 rounded-lg text-white font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {messageLoading ? 'Sending...' : 'Send Broadcast'}
+                  </button>
+                </div>
+              )}
+
+              {/* Message Result */}
+              {messageResult && (
+                <div className={`mt-4 p-4 rounded-lg ${
+                  messageResult.type === 'success' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'
+                }`}>
+                  {messageResult.text}
                 </div>
               )}
             </div>
