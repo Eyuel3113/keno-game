@@ -867,46 +867,47 @@ export default function AdminDashboardPage() {
         {/* Messages Tab */}
         {activeTab === 'messages' && (
           <div className="space-y-6">
-            <div className="bg-gradient-to-br from-slate-900 to-slate-800 border border-slate-700 rounded-2xl p-8 shadow-2xl">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-12 h-12 bg-violet-600 rounded-xl flex items-center justify-center">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="bg-gradient-to-br from-slate-900 to-slate-800 border border-slate-700 rounded-2xl p-4 md:p-8 shadow-2xl">
+              <div className="flex items-center gap-3 mb-4 md:mb-6">
+                <div className="w-10 h-10 md:w-12 md:h-12 bg-violet-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <svg className="w-5 h-5 md:w-6 md:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                   </svg>
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-white">Send Telegram Messages</h2>
-                  <p className="text-slate-400 text-sm">Send messages to individual users or broadcast to all users</p>
+                  <h2 className="text-lg md:text-2xl font-bold text-white">Send Telegram Messages</h2>
+                  <p className="text-slate-400 text-xs md:text-sm">Send messages to individual users or broadcast to all users</p>
                 </div>
               </div>
               
               {/* Message Type Toggle */}
-              <div className="flex gap-3 mb-8 p-1 bg-slate-800 rounded-xl">
+              <div className="flex gap-2 md:gap-3 mb-6 md:mb-8 p-1 bg-slate-800 rounded-xl">
                 <button
                   onClick={() => setMessageType('individual')}
-                  className={`flex-1 px-4 py-3 rounded-lg font-semibold transition-all duration-200 ${
+                  className={`flex-1 px-3 py-2 md:px-4 md:py-3 rounded-lg font-semibold transition-all duration-200 text-xs md:text-sm ${
                     messageType === 'individual' 
                       ? 'bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-lg' 
                       : 'text-slate-400 hover:text-white hover:bg-slate-700'
                   }`}
                 >
-                  <span className="flex items-center justify-center gap-2">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <span className="flex items-center justify-center gap-1 md:gap-2">
+                    <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
-                    Individual User
+                    <span className="hidden sm:inline">Individual User</span>
+                    <span className="sm:hidden">Individual</span>
                   </span>
                 </button>
                 <button
                   onClick={() => setMessageType('broadcast')}
-                  className={`flex-1 px-4 py-3 rounded-lg font-semibold transition-all duration-200 ${
+                  className={`flex-1 px-3 py-2 md:px-4 md:py-3 rounded-lg font-semibold transition-all duration-200 text-xs md:text-sm ${
                     messageType === 'broadcast' 
                       ? 'bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-lg' 
                       : 'text-slate-400 hover:text-white hover:bg-slate-700'
                   }`}
                 >
-                  <span className="flex items-center justify-center gap-2">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <span className="flex items-center justify-center gap-1 md:gap-2">
+                    <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                     </svg>
                     Broadcast
@@ -916,10 +917,10 @@ export default function AdminDashboardPage() {
 
               {/* Individual User Message */}
               {messageType === 'individual' && (
-                <div className="space-y-5">
+                <div className="space-y-4 md:space-y-5">
                   <div className="relative">
-                    <label className="block text-sm font-semibold text-white mb-2 flex items-center gap-2">
-                      <svg className="w-4 h-4 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <label className="block text-xs md:text-sm font-semibold text-white mb-2 flex items-center gap-2">
+                      <svg className="w-3 h-3 md:w-4 md:h-4 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                       </svg>
                       Search User
@@ -929,15 +930,15 @@ export default function AdminDashboardPage() {
                       value={userSearch}
                       onChange={(e) => setUserSearch(e.target.value)}
                       placeholder="Search by username or email..."
-                      className="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 pl-10 text-white placeholder-slate-400 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 transition-all"
+                      className="w-full bg-slate-800 border border-slate-600 rounded-xl px-3 py-2 md:px-4 md:py-3 pl-8 md:pl-10 text-xs md:text-sm text-white placeholder-slate-400 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 transition-all"
                     />
-                    <svg className="w-5 h-5 text-slate-400 absolute left-3 top-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 md:w-5 md:h-5 text-slate-400 absolute left-2 md:left-3 top-8 md:top-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-white mb-2 flex items-center gap-2">
-                      <svg className="w-4 h-4 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <label className="block text-xs md:text-sm font-semibold text-white mb-2 flex items-center gap-2">
+                      <svg className="w-3 h-3 md:w-4 md:h-4 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                       </svg>
                       Select User
@@ -945,7 +946,7 @@ export default function AdminDashboardPage() {
                     <select
                       value={selectedUserId}
                       onChange={(e) => setSelectedUserId(e.target.value)}
-                      className="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 text-white focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 transition-all"
+                      className="w-full bg-slate-800 border border-slate-600 rounded-xl px-3 py-2 md:px-4 md:py-3 text-xs md:text-sm text-white focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 transition-all"
                     >
                       <option value="">Select a user...</option>
                       {users
@@ -962,8 +963,8 @@ export default function AdminDashboardPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-white mb-2 flex items-center gap-2">
-                      <svg className="w-4 h-4 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <label className="block text-xs md:text-sm font-semibold text-white mb-2 flex items-center gap-2">
+                      <svg className="w-3 h-3 md:w-4 md:h-4 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
                       Photo (optional)
@@ -973,21 +974,21 @@ export default function AdminDashboardPage() {
                         type="file"
                         accept="image/*"
                         onChange={(e) => setPhotoFile(e.target.files?.[0] || null)}
-                        className="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 text-white focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 transition-all file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-violet-600 file:text-white file:cursor-pointer hover:file:bg-violet-500"
+                        className="w-full bg-slate-800 border border-slate-600 rounded-xl px-3 py-2 md:px-4 md:py-3 text-xs md:text-sm text-white focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 transition-all file:mr-2 md:file:mr-4 file:py-1 md:file:py-2 file:px-2 md:file:px-4 file:rounded-lg file:border-0 file:bg-violet-600 file:text-white file:cursor-pointer hover:file:bg-violet-500"
                       />
                       {photoFile && (
-                        <div className="mt-2 text-sm text-slate-400 flex items-center gap-2">
-                          <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="mt-2 text-xs md:text-sm text-slate-400 flex items-center gap-2">
+                          <svg className="w-3 h-3 md:w-4 md:h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                           </svg>
-                          {photoFile.name}
+                          <span className="truncate">{photoFile.name}</span>
                         </div>
                       )}
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-white mb-2 flex items-center gap-2">
-                      <svg className="w-4 h-4 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <label className="block text-xs md:text-sm font-semibold text-white mb-2 flex items-center gap-2">
+                      <svg className="w-3 h-3 md:w-4 md:h-4 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                       </svg>
                       Message (optional if photo provided)
@@ -997,7 +998,7 @@ export default function AdminDashboardPage() {
                       onChange={(e) => setCustomMessage(e.target.value)}
                       placeholder="Enter your message..."
                       rows={4}
-                      className="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-400 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 transition-all resize-none"
+                      className="w-full bg-slate-800 border border-slate-600 rounded-xl px-3 py-2 md:px-4 md:py-3 text-xs md:text-sm text-white placeholder-slate-400 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 transition-all resize-none"
                     />
                   </div>
                   <button
@@ -1039,11 +1040,11 @@ export default function AdminDashboardPage() {
                       }
                     }}
                     disabled={messageLoading}
-                    className="w-full px-6 py-4 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 rounded-xl text-white font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+                    className="w-full px-4 py-3 md:px-6 md:py-4 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 rounded-xl text-white font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl flex items-center justify-center gap-2 text-xs md:text-sm"
                   >
                     {messageLoading ? (
                       <>
-                        <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4 md:w-5 md:h-5 animate-spin" fill="none" viewBox="0 0 24 24">
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
@@ -1051,7 +1052,7 @@ export default function AdminDashboardPage() {
                       </>
                     ) : (
                       <>
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                         </svg>
                         Send Message
@@ -1063,10 +1064,10 @@ export default function AdminDashboardPage() {
 
               {/* Broadcast Message */}
               {messageType === 'broadcast' && (
-                <div className="space-y-5">
+                <div className="space-y-4 md:space-y-5">
                   <div>
-                    <label className="block text-sm font-semibold text-white mb-2 flex items-center gap-2">
-                      <svg className="w-4 h-4 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <label className="block text-xs md:text-sm font-semibold text-white mb-2 flex items-center gap-2">
+                      <svg className="w-3 h-3 md:w-4 md:h-4 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
                       Photo (optional)
@@ -1076,21 +1077,21 @@ export default function AdminDashboardPage() {
                         type="file"
                         accept="image/*"
                         onChange={(e) => setPhotoFile(e.target.files?.[0] || null)}
-                        className="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 text-white focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 transition-all file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-violet-600 file:text-white file:cursor-pointer hover:file:bg-violet-500"
+                        className="w-full bg-slate-800 border border-slate-600 rounded-xl px-3 py-2 md:px-4 md:py-3 text-xs md:text-sm text-white focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 transition-all file:mr-2 md:file:mr-4 file:py-1 md:file:py-2 file:px-2 md:file:px-4 file:rounded-lg file:border-0 file:bg-violet-600 file:text-white file:cursor-pointer hover:file:bg-violet-500"
                       />
                       {photoFile && (
-                        <div className="mt-2 text-sm text-slate-400 flex items-center gap-2">
-                          <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="mt-2 text-xs md:text-sm text-slate-400 flex items-center gap-2">
+                          <svg className="w-3 h-3 md:w-4 md:h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                           </svg>
-                          {photoFile.name}
+                          <span className="truncate">{photoFile.name}</span>
                         </div>
                       )}
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-white mb-2 flex items-center gap-2">
-                      <svg className="w-4 h-4 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <label className="block text-xs md:text-sm font-semibold text-white mb-2 flex items-center gap-2">
+                      <svg className="w-3 h-3 md:w-4 md:h-4 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                       </svg>
                       Message (optional if photo provided)
@@ -1100,7 +1101,7 @@ export default function AdminDashboardPage() {
                       onChange={(e) => setCustomMessage(e.target.value)}
                       placeholder="Enter your broadcast message..."
                       rows={4}
-                      className="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-400 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 transition-all resize-none"
+                      className="w-full bg-slate-800 border border-slate-600 rounded-xl px-3 py-2 md:px-4 md:py-3 text-xs md:text-sm text-white placeholder-slate-400 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 transition-all resize-none"
                     />
                   </div>
                   <button
@@ -1140,11 +1141,11 @@ export default function AdminDashboardPage() {
                       }
                     }}
                     disabled={messageLoading}
-                    className="w-full px-6 py-4 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 rounded-xl text-white font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+                    className="w-full px-4 py-3 md:px-6 md:py-4 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 rounded-xl text-white font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl flex items-center justify-center gap-2 text-xs md:text-sm"
                   >
                     {messageLoading ? (
                       <>
-                        <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4 md:w-5 md:h-5 animate-spin" fill="none" viewBox="0 0 24 24">
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
@@ -1152,7 +1153,7 @@ export default function AdminDashboardPage() {
                       </>
                     ) : (
                       <>
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                         </svg>
                         Send Broadcast
@@ -1164,21 +1165,21 @@ export default function AdminDashboardPage() {
 
               {/* Message Result */}
               {messageResult && (
-                <div className={`mt-6 p-4 rounded-xl flex items-center gap-3 ${
+                <div className={`mt-4 md:mt-6 p-3 md:p-4 rounded-xl flex items-center gap-2 md:gap-3 ${
                   messageResult.type === 'success' 
                     ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400' 
                     : 'bg-red-500/10 border border-red-500/30 text-red-400'
                 }`}>
                   {messageResult.type === 'success' ? (
-                    <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                   ) : (
-                    <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   )}
-                  <span>{messageResult.text}</span>
+                  <span className="text-xs md:text-sm">{messageResult.text}</span>
                 </div>
               )}
             </div>
