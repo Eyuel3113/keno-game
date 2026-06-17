@@ -867,48 +867,85 @@ export default function AdminDashboardPage() {
         {/* Messages Tab */}
         {activeTab === 'messages' && (
           <div className="space-y-6">
-            <div className="bg-slate-900 border border-slate-700 rounded-xl p-6">
-              <h2 className="text-xl font-bold text-white mb-4">Send Telegram Messages</h2>
+            <div className="bg-gradient-to-br from-slate-900 to-slate-800 border border-slate-700 rounded-2xl p-8 shadow-2xl">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-12 h-12 bg-violet-600 rounded-xl flex items-center justify-center">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-white">Send Telegram Messages</h2>
+                  <p className="text-slate-400 text-sm">Send messages to individual users or broadcast to all users</p>
+                </div>
+              </div>
               
               {/* Message Type Toggle */}
-              <div className="flex gap-4 mb-6">
+              <div className="flex gap-3 mb-8 p-1 bg-slate-800 rounded-xl">
                 <button
                   onClick={() => setMessageType('individual')}
-                  className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
-                    messageType === 'individual' ? 'bg-violet-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                  className={`flex-1 px-4 py-3 rounded-lg font-semibold transition-all duration-200 ${
+                    messageType === 'individual' 
+                      ? 'bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-lg' 
+                      : 'text-slate-400 hover:text-white hover:bg-slate-700'
                   }`}
                 >
-                  Send to Individual User
+                  <span className="flex items-center justify-center gap-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    Individual User
+                  </span>
                 </button>
                 <button
                   onClick={() => setMessageType('broadcast')}
-                  className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
-                    messageType === 'broadcast' ? 'bg-violet-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                  className={`flex-1 px-4 py-3 rounded-lg font-semibold transition-all duration-200 ${
+                    messageType === 'broadcast' 
+                      ? 'bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-lg' 
+                      : 'text-slate-400 hover:text-white hover:bg-slate-700'
                   }`}
                 >
-                  Broadcast to All Users
+                  <span className="flex items-center justify-center gap-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    Broadcast
+                  </span>
                 </button>
               </div>
 
               {/* Individual User Message */}
               {messageType === 'individual' && (
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-white mb-2">Search User</label>
+                <div className="space-y-5">
+                  <div className="relative">
+                    <label className="block text-sm font-semibold text-white mb-2 flex items-center gap-2">
+                      <svg className="w-4 h-4 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                      Search User
+                    </label>
                     <input
                       type="text"
                       value={userSearch}
                       onChange={(e) => setUserSearch(e.target.value)}
                       placeholder="Search by username or email..."
-                      className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-3 text-white placeholder-slate-400"
+                      className="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 pl-10 text-white placeholder-slate-400 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 transition-all"
                     />
+                    <svg className="w-5 h-5 text-slate-400 absolute left-3 top-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-white mb-2">Select User</label>
+                    <label className="block text-sm font-semibold text-white mb-2 flex items-center gap-2">
+                      <svg className="w-4 h-4 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                      Select User
+                    </label>
                     <select
                       value={selectedUserId}
                       onChange={(e) => setSelectedUserId(e.target.value)}
-                      className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-3 text-white"
+                      className="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 text-white focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 transition-all"
                     >
                       <option value="">Select a user...</option>
                       {users
@@ -925,22 +962,42 @@ export default function AdminDashboardPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-white mb-2">Photo (optional)</label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => setPhotoFile(e.target.files?.[0] || null)}
-                      className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-3 text-white"
-                    />
+                    <label className="block text-sm font-semibold text-white mb-2 flex items-center gap-2">
+                      <svg className="w-4 h-4 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      Photo (optional)
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => setPhotoFile(e.target.files?.[0] || null)}
+                        className="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 text-white focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 transition-all file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-violet-600 file:text-white file:cursor-pointer hover:file:bg-violet-500"
+                      />
+                      {photoFile && (
+                        <div className="mt-2 text-sm text-slate-400 flex items-center gap-2">
+                          <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          {photoFile.name}
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-white mb-2">Message (optional if photo provided)</label>
+                    <label className="block text-sm font-semibold text-white mb-2 flex items-center gap-2">
+                      <svg className="w-4 h-4 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                      Message (optional if photo provided)
+                    </label>
                     <textarea
                       value={customMessage}
                       onChange={(e) => setCustomMessage(e.target.value)}
                       placeholder="Enter your message..."
                       rows={4}
-                      className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-3 text-white placeholder-slate-400"
+                      className="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-400 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 transition-all resize-none"
                     />
                   </div>
                   <button
@@ -982,33 +1039,68 @@ export default function AdminDashboardPage() {
                       }
                     }}
                     disabled={messageLoading}
-                    className="px-6 py-3 bg-violet-600 hover:bg-violet-500 rounded-lg text-white font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full px-6 py-4 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 rounded-xl text-white font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
                   >
-                    {messageLoading ? 'Sending...' : 'Send Message'}
+                    {messageLoading ? (
+                      <>
+                        <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Sending...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                        </svg>
+                        Send Message
+                      </>
+                    )}
                   </button>
                 </div>
               )}
 
               {/* Broadcast Message */}
               {messageType === 'broadcast' && (
-                <div className="space-y-4">
+                <div className="space-y-5">
                   <div>
-                    <label className="block text-sm font-semibold text-white mb-2">Photo (optional)</label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => setPhotoFile(e.target.files?.[0] || null)}
-                      className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-3 text-white"
-                    />
+                    <label className="block text-sm font-semibold text-white mb-2 flex items-center gap-2">
+                      <svg className="w-4 h-4 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      Photo (optional)
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => setPhotoFile(e.target.files?.[0] || null)}
+                        className="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 text-white focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 transition-all file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-violet-600 file:text-white file:cursor-pointer hover:file:bg-violet-500"
+                      />
+                      {photoFile && (
+                        <div className="mt-2 text-sm text-slate-400 flex items-center gap-2">
+                          <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          {photoFile.name}
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-white mb-2">Message (optional if photo provided)</label>
+                    <label className="block text-sm font-semibold text-white mb-2 flex items-center gap-2">
+                      <svg className="w-4 h-4 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                      Message (optional if photo provided)
+                    </label>
                     <textarea
                       value={customMessage}
                       onChange={(e) => setCustomMessage(e.target.value)}
                       placeholder="Enter your broadcast message..."
                       rows={4}
-                      className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-3 text-white placeholder-slate-400"
+                      className="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-400 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 transition-all resize-none"
                     />
                   </div>
                   <button
@@ -1048,19 +1140,45 @@ export default function AdminDashboardPage() {
                       }
                     }}
                     disabled={messageLoading}
-                    className="px-6 py-3 bg-violet-600 hover:bg-violet-500 rounded-lg text-white font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full px-6 py-4 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 rounded-xl text-white font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
                   >
-                    {messageLoading ? 'Sending...' : 'Send Broadcast'}
+                    {messageLoading ? (
+                      <>
+                        <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Sending...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                        </svg>
+                        Send Broadcast
+                      </>
+                    )}
                   </button>
                 </div>
               )}
 
               {/* Message Result */}
               {messageResult && (
-                <div className={`mt-4 p-4 rounded-lg ${
-                  messageResult.type === 'success' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'
+                <div className={`mt-6 p-4 rounded-xl flex items-center gap-3 ${
+                  messageResult.type === 'success' 
+                    ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400' 
+                    : 'bg-red-500/10 border border-red-500/30 text-red-400'
                 }`}>
-                  {messageResult.text}
+                  {messageResult.type === 'success' ? (
+                    <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  ) : (
+                    <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  )}
+                  <span>{messageResult.text}</span>
                 </div>
               )}
             </div>
