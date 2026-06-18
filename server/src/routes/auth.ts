@@ -469,13 +469,16 @@ router.post('/telegram', async (req: Request, res: Response) => {
     // Validate referral code if provided
     let referredBy: string | null = null;
     if (referralCode) {
+      console.log('[Telegram Auth] Processing referral code:', referralCode);
       const referrer = await validateReferralCode(referralCode);
       if (referrer) {
         referredBy = referrer.id;
-        console.log('[Telegram Auth] Referral code validated, referred by:', referrer.id);
+        console.log('[Telegram Auth] Referral code validated, referred by:', referrer.id, referrer.email);
       } else {
         console.log('[Telegram Auth] Invalid referral code:', referralCode);
       }
+    } else {
+      console.log('[Telegram Auth] No referral code provided');
     }
 
     // Create new user
@@ -531,6 +534,7 @@ router.get('/referral', authenticate, async (req: AuthRequest, res: Response) =>
   }
 
   try {
+    console.log('[Referral Info] Fetching referral info for user:', userId);
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -551,6 +555,8 @@ router.get('/referral', authenticate, async (req: AuthRequest, res: Response) =>
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
+
+    console.log('[Referral Info] User found:', user.referralCode, 'Referred users count:', user.referredUsers.length);
 
     // Ensure user has a referral code
     if (!user.referralCode) {
