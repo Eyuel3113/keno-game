@@ -412,7 +412,7 @@ router.post('/change-password', authenticate, async (req: AuthRequest, res: Resp
 
 // ─── Telegram Authentication ───────────────────────────────────────────────────
 router.post('/telegram', async (req: Request, res: Response) => {
-  console.log('[Telegram Auth] Request received:', req.body);
+  console.log('[Telegram Auth] Request received:', JSON.stringify(req.body, null, 2));
   const { initData, user } = req.body;
 
   if (!user || !user.id) {
