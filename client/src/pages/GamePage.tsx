@@ -3,7 +3,6 @@ import Board from '../components/Board';
 import BetPanel from '../components/BetPanel';
 import DrawResults from '../components/DrawResults';
 import History from '../components/History';
-import Referral from '../components/Referral';
 import { useSocket } from '../hooks/useSocket';
 import { useAuth } from '../hooks/useAuth';
 import { useStore } from '../store';
@@ -31,7 +30,6 @@ export default function GamePage() {
 
         {/* Mobile sidebar: BetPanel placed at top so it is immediately visible below the game */}
         <div className="xl:hidden flex flex-col gap-4">
-          <Referral />
           <BetPanel />
           <History />
         </div>
@@ -39,7 +37,6 @@ export default function GamePage() {
 
       {/* Desktop sidebar */}
       <div className="hidden xl:flex xl:w-80 flex-col gap-4 shrink-0">
-        <Referral />
         <BetPanel />
         <History />
       </div>
