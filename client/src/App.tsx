@@ -902,7 +902,6 @@ interface ReferralModalProps {
 }
 
 function ReferralModal({ isOpen, onClose }: ReferralModalProps) {
-  const { token } = useStore();
   const [referralCode, setReferralCode] = useState('');
   const [referredCount, setReferredCount] = useState(0);
   const [completedReferrals, setCompletedReferrals] = useState(0);
