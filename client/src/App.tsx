@@ -931,7 +931,7 @@ function ReferralModal({ isOpen, onClose }: ReferralModalProps) {
 
   const copyReferralCode = async () => {
     try {
-      const fullLink = `https://keno-game-eight.vercel.app/?ref=${referralCode}`;
+      const fullLink = `https://t.me/kendogamebot?startapp=${referralCode}`;
       if (navigator.clipboard && window.isSecureContext) {
         await navigator.clipboard.writeText(fullLink);
       } else {
@@ -950,8 +950,8 @@ function ReferralModal({ isOpen, onClose }: ReferralModalProps) {
   };
 
   const shareViaTelegram = () => {
-    const message = `🎁 Join Keno Game using my referral code: ${referralCode}\n\nGet 50 free chips when you sign up!\n\nhttps://keno-game-eight.vercel.app/?ref=${referralCode}`;
-    const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent('https://keno-game-eight.vercel.app/?ref=' + referralCode)}&text=${encodeURIComponent(message)}`;
+    const message = `🎁 Join Keno Game using my referral code: ${referralCode}\n\nGet 50 free chips when you sign up!\n\nhttps://t.me/kendogamebot?startapp=${referralCode}`;
+    const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent('https://t.me/kendogamebot?startapp=' + referralCode)}&text=${encodeURIComponent(message)}`;
     window.open(telegramUrl, '_blank');
   };
 
@@ -1000,7 +1000,7 @@ function ReferralModal({ isOpen, onClose }: ReferralModalProps) {
                 <p className="text-amber-300 text-sm font-semibold mb-2">Your Referral Link</p>
                 <div className="flex items-center gap-2">
                   <div className="flex-1 bg-slate-900/80 rounded-lg px-3 py-3 text-white font-mono text-xs tracking-wider font-bold break-all">
-                    https://keno-game-eight.vercel.app/?ref={referralCode}
+                    https://t.me/kendogamebot?startapp={referralCode}
                   </div>
                   <button
                     onClick={() => copyReferralCode()}
@@ -1405,41 +1405,54 @@ function App() {
     console.log('Checking for Telegram WebApp...');
     console.log('window.Telegram:', window.Telegram);
     console.log('window.Telegram?.WebApp:', window.Telegram?.WebApp);
-    
-    if (window.Telegram?.WebApp) {
-      console.log('Telegram WebApp detected');
-      setIsTelegram(true);
-      window.Telegram.WebApp.ready();
-      window.Telegram.WebApp.expand();
-      window.Telegram.WebApp.enableClosingConfirmation();
 
-      // Apply Telegram theme
-      const theme = window.Telegram.WebApp.themeParams;
-      if (theme) {
-        document.documentElement.style.setProperty('--tg-theme-bg-color', theme.bg_color);
-        document.documentElement.style.setProperty('--tg-theme-text-color', theme.text_color);
-        document.documentElement.style.setProperty('--tg-theme-hint-color', theme.hint_color);
-        document.documentElement.style.setProperty('--tg-theme-link-color', theme.link_color);
-        document.documentElement.style.setProperty('--tg-theme-button-color', theme.button_color);
-        document.documentElement.style.setProperty('--tg-theme-button-text-color', theme.button_text_color);
-      }
+    // Check for referral code in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const referralCode = urlParams.get('ref');
 
-      // Get Telegram user data
-      const initDataUnsafe = window.Telegram.WebApp.initDataUnsafe;
-      console.log('initDataUnsafe:', initDataUnsafe);
-      const user = initDataUnsafe.user;
-      console.log('Telegram user:', user);
-      
-      if (user) {
-        // Auto-login with Telegram
-        console.log('Starting Telegram login...');
-        handleTelegramLogin(user);
-      } else {
-        console.error('No Telegram user data available');
-        setAuthError('No Telegram user data available. Please open this app from Telegram.');
-      }
-    } else {
+    if (!window.Telegram?.WebApp) {
       console.log('Not running in Telegram WebApp');
+      if (referralCode) {
+        // Redirect to Telegram bot with startapp parameter
+        const telegramUrl = `https://t.me/kendogamebot?startapp=${referralCode}`;
+        console.log('Redirecting to Telegram:', telegramUrl);
+        window.location.href = telegramUrl;
+        return;
+      }
+      setAuthError('Please open this app from Telegram.');
+      return;
+    }
+
+    console.log('Telegram WebApp detected');
+    setIsTelegram(true);
+    window.Telegram.WebApp.ready();
+    window.Telegram.WebApp.expand();
+    window.Telegram.WebApp.enableClosingConfirmation();
+
+    // Apply Telegram theme
+    const theme = window.Telegram.WebApp.themeParams;
+    if (theme) {
+      document.documentElement.style.setProperty('--tg-theme-bg-color', theme.bg_color);
+      document.documentElement.style.setProperty('--tg-theme-text-color', theme.text_color);
+      document.documentElement.style.setProperty('--tg-theme-hint-color', theme.hint_color);
+      document.documentElement.style.setProperty('--tg-theme-link-color', theme.link_color);
+      document.documentElement.style.setProperty('--tg-theme-button-color', theme.button_color);
+      document.documentElement.style.setProperty('--tg-theme-button-text-color', theme.button_text_color);
+    }
+
+    // Get Telegram user data
+    const initDataUnsafe = window.Telegram.WebApp.initDataUnsafe;
+    console.log('initDataUnsafe:', initDataUnsafe);
+    const user = initDataUnsafe.user;
+    console.log('Telegram user:', user);
+
+    if (user) {
+      // Auto-login with Telegram
+      console.log('Starting Telegram login...');
+      handleTelegramLogin(user);
+    } else {
+      console.error('No Telegram user data available');
+      setAuthError('No Telegram user data available. Please open this app from Telegram.');
     }
   }, [setIsTelegram]);
 
