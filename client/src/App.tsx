@@ -1450,10 +1450,31 @@ function App() {
       const initData = window.Telegram?.WebApp.initData;
       console.log('InitData:', initData);
 
-      // Extract start_param from initDataUnsafe if available
+      // Extract start_param from multiple sources
+      let startParam: string | null = null;
+
+      // 1. Check initDataUnsafe.start_param
       const initDataUnsafe = window.Telegram?.WebApp.initDataUnsafe;
-      const startParam = (initDataUnsafe as any)?.start_param;
-      console.log('Start param:', startParam);
+      if ((initDataUnsafe as any)?.start_param) {
+        startParam = (initDataUnsafe as any).start_param;
+        console.log('Start param from initDataUnsafe:', startParam);
+      }
+
+      // 2. Check URL query parameters
+      if (!startParam && typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search);
+        startParam = urlParams.get('start');
+        console.log('Start param from URL:', startParam);
+      }
+
+      // 3. Parse initData as query string
+      if (!startParam && initData) {
+        const params = new URLSearchParams(initData);
+        startParam = params.get('start');
+        console.log('Start param from initData query string:', startParam);
+      }
+
+      console.log('Final start param:', startParam);
 
       const res = await fetch(`${API_BASE_URL}/api/auth/telegram`, {
         method: 'POST',
