@@ -931,7 +931,7 @@ function ReferralModal({ isOpen, onClose }: ReferralModalProps) {
 
   const copyReferralCode = async () => {
     try {
-      const fullLink = `https://keno-game-eight.vercel.app/referral.html?ref=${referralCode}`;
+      const fullLink = `https://t.me/kendogamebot/kendo?startapp=${referralCode}`;
       if (navigator.clipboard && window.isSecureContext) {
         await navigator.clipboard.writeText(fullLink);
       } else {
@@ -950,8 +950,8 @@ function ReferralModal({ isOpen, onClose }: ReferralModalProps) {
   };
 
   const shareViaTelegram = () => {
-    const message = `🎁 Join Keno Game using my referral code: ${referralCode}\n\nGet 50 free chips when you sign up!\n\nhttps://keno-game-eight.vercel.app/referral.html?ref=${referralCode}`;
-    const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent('https://keno-game-eight.vercel.app/referral.html?ref=' + referralCode)}&text=${encodeURIComponent(message)}`;
+    const message = `🎁 Join Keno Game using my referral code: ${referralCode}\n\nGet 50 free chips when you sign up!\n\nhttps://t.me/kendogamebot/keno?startapp=${referralCode}`;
+    const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent('https://t.me/kendogamebot/keno?startapp=' + referralCode)}&text=${encodeURIComponent(message)}`;
     window.open(telegramUrl, '_blank');
   };
 
@@ -1000,7 +1000,7 @@ function ReferralModal({ isOpen, onClose }: ReferralModalProps) {
                 <p className="text-amber-300 text-sm font-semibold mb-2">Your Referral Link</p>
                 <div className="flex items-center gap-2">
                   <div className="flex-1 bg-slate-900/80 rounded-lg px-3 py-3 text-white font-mono text-xs tracking-wider font-bold break-all">
-                    https://keno-game-eight.vercel.app/referral.html?ref={referralCode}
+                    https://t.me/kendogamebot/keno?startapp={referralCode}
                   </div>
                   <button
                     onClick={() => copyReferralCode()}

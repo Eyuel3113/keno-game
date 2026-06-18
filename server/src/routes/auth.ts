@@ -433,26 +433,8 @@ router.post('/telegram', async (req: Request, res: Response) => {
     // Extract referral code from start parameter in initData
     let referralCode: string | null = null;
     if (initData && initData.start_param) {
-      const startParam = initData.start_param;
-      console.log('[Telegram Auth] Start param:', startParam);
-
-      // Check if it's a referral token (32 character hex string)
-      if (startParam && /^[a-f0-9]{32}$/.test(startParam)) {
-        // Look up referral code from token
-        const tokenData = referralTokenStore.get(startParam);
-        if (tokenData) {
-          referralCode = tokenData.referralCode;
-          console.log('[Telegram Auth] Referral code from token:', referralCode);
-          // Delete the token after use
-          referralTokenStore.delete(startParam);
-        } else {
-          console.log('[Telegram Auth] Invalid or expired token:', startParam);
-        }
-      } else {
-        // Use start_param directly as referral code
-        referralCode = startParam;
-        console.log('[Telegram Auth] Referral code from start_param:', referralCode);
-      }
+      referralCode = initData.start_param;
+      console.log('[Telegram Auth] Referral code from start_param:', referralCode);
     }
 
     // Find or create user
