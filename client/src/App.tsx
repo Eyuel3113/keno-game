@@ -1455,6 +1455,7 @@ function App() {
 
       // 1. Check initDataUnsafe.start_param
       const initDataUnsafe = window.Telegram?.WebApp.initDataUnsafe;
+      console.log('initDataUnsafe:', initDataUnsafe);
       if ((initDataUnsafe as any)?.start_param) {
         startParam = (initDataUnsafe as any).start_param;
         console.log('Start param from initDataUnsafe:', startParam);
@@ -1475,6 +1476,7 @@ function App() {
       }
 
       console.log('Final start param:', startParam);
+      console.log('Current URL:', window.location.href);
 
       const res = await fetch(`${API_BASE_URL}/api/auth/telegram`, {
         method: 'POST',
