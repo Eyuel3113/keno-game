@@ -9,6 +9,19 @@ import { assignReferralCode, validateReferralCode } from '../utils/referral';
 
 const router = Router();
 
+// In-memory store for referral tokens (in production, use Redis or database)
+const referralTokenStore = new Map<string, { referralCode: string; createdAt: number }>();
+
+// Clean up expired tokens (older than 1 hour)
+setInterval(() => {
+  const now = Date.now();
+  for (const [token, data] of referralTokenStore.entries()) {
+    if (now - data.createdAt > 3600000) { // 1 hour
+      referralTokenStore.delete(token);
+    }
+  }
+}, 300000); // Check every 5 minutes
+
 function formatEthiopianPhoneNumber(phone: string): string {
   let clean = phone.replace(/[^\d+]/g, '');
   if (clean.startsWith('0')) {
@@ -420,8 +433,26 @@ router.post('/telegram', async (req: Request, res: Response) => {
     // Extract referral code from start parameter in initData
     let referralCode: string | null = null;
     if (initData && initData.start_param) {
-      referralCode = initData.start_param;
-      console.log('[Telegram Auth] Referral code from start_param:', referralCode);
+      const startParam = initData.start_param;
+      console.log('[Telegram Auth] Start param:', startParam);
+
+      // Check if it's a referral token (32 character hex string)
+      if (startParam && /^[a-f0-9]{32}$/.test(startParam)) {
+        // Look up referral code from token
+        const tokenData = referralTokenStore.get(startParam);
+        if (tokenData) {
+          referralCode = tokenData.referralCode;
+          console.log('[Telegram Auth] Referral code from token:', referralCode);
+          // Delete the token after use
+          referralTokenStore.delete(startParam);
+        } else {
+          console.log('[Telegram Auth] Invalid or expired token:', startParam);
+        }
+      } else {
+        // Use start_param directly as referral code
+        referralCode = startParam;
+        console.log('[Telegram Auth] Referral code from start_param:', referralCode);
+      }
     }
 
     // Find or create user
@@ -522,6 +553,39 @@ router.post('/telegram', async (req: Request, res: Response) => {
   } catch (err) {
     console.error('[Telegram Auth] Error:', err);
     return res.status(500).json({ message: 'Server error', error: String(err) });
+  }
+});
+
+// ─── Create Referral Token ───────────────────────────────────────────────────────
+router.post('/referral-token', async (req: Request, res: Response) => {
+  const { referralCode } = req.body;
+
+  if (!referralCode) {
+    return res.status(400).json({ message: 'Referral code is required' });
+  }
+
+  try {
+    // Validate referral code
+    const referrer = await validateReferralCode(referralCode);
+    if (!referrer) {
+      return res.status(400).json({ message: 'Invalid referral code' });
+    }
+
+    // Generate a unique token
+    const token = crypto.randomBytes(16).toString('hex');
+
+    // Store the referral code with the token
+    referralTokenStore.set(token, {
+      referralCode,
+      createdAt: Date.now()
+    });
+
+    console.log('[Referral Token] Created token for referral code:', referralCode);
+
+    return res.json({ token });
+  } catch (error) {
+    console.error('[Referral Token] Error:', error);
+    return res.status(500).json({ message: 'Server error' });
   }
 });
 

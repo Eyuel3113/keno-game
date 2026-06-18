@@ -1466,15 +1466,14 @@ function App() {
       // Extract referral code from multiple sources
       let startParam: string | null = null;
 
-      // 1. Check localStorage (set by referral landing page)
-      if (typeof window !== 'undefined') {
-        const storedReferralCode = localStorage.getItem('referralCode');
-        if (storedReferralCode) {
-          startParam = storedReferralCode;
-          console.log('Referral code from localStorage:', startParam);
-          // Clear localStorage after reading
-          localStorage.removeItem('referralCode');
-        }
+      // 1. Check initDataUnsafe.start_param (for Mini Apps)
+      const initDataUnsafe = window.Telegram?.WebApp.initDataUnsafe;
+      console.log('initDataUnsafe:', JSON.stringify(initDataUnsafe, null, 2));
+      console.log('initDataUnsafe keys:', Object.keys(initDataUnsafe || {}));
+      console.log('initDataUnsafe.start_param:', (initDataUnsafe as any)?.start_param);
+      if ((initDataUnsafe as any)?.start_param) {
+        startParam = (initDataUnsafe as any).start_param;
+        console.log('Referral code from initDataUnsafe:', startParam);
       }
 
       // 2. Check URL query parameters for ref (direct WebApp link)
@@ -1484,33 +1483,21 @@ function App() {
         console.log('Referral code from URL (?ref=):', startParam);
       }
 
-      // 3. Check initDataUnsafe.start_param (for Mini Apps)
-      if (!startParam) {
-        const initDataUnsafe = window.Telegram?.WebApp.initDataUnsafe;
-        console.log('initDataUnsafe:', JSON.stringify(initDataUnsafe, null, 2));
-        console.log('initDataUnsafe keys:', Object.keys(initDataUnsafe || {}));
-        console.log('initDataUnsafe.start_param:', (initDataUnsafe as any)?.start_param);
-        if ((initDataUnsafe as any)?.start_param) {
-          startParam = (initDataUnsafe as any).start_param;
-          console.log('Referral code from initDataUnsafe:', startParam);
-        }
-      }
-
-      // 4. Check URL query parameters for startapp (Mini Apps) or start (regular bots)
+      // 3. Check URL query parameters for startapp (Mini Apps) or start (regular bots)
       if (!startParam && typeof window !== 'undefined') {
         const urlParams = new URLSearchParams(window.location.search);
         startParam = urlParams.get('startapp') || urlParams.get('start');
         console.log('Referral code from URL (?startapp= or ?start=):', startParam);
       }
 
-      // 5. Parse initData as query string for startapp or start
+      // 4. Parse initData as query string for startapp or start
       if (!startParam && initData) {
         const params = new URLSearchParams(initData);
         startParam = params.get('startapp') || params.get('start');
         console.log('Referral code from initData query string:', startParam);
       }
 
-      // 6. Check tgWebAppData in URL hash for startapp or start
+      // 5. Check tgWebAppData in URL hash for startapp or start
       if (!startParam && typeof window !== 'undefined') {
         const hash = window.location.hash;
         console.log('URL hash:', hash);

@@ -56,13 +56,32 @@
         const referralCode = urlParams.get('ref');
 
         if (referralCode) {
-            // Store referral code in localStorage
-            localStorage.setItem('referralCode', referralCode);
-            console.log('Referral code stored:', referralCode);
+            console.log('Referral code:', referralCode);
 
-            // Redirect to Telegram bot
-            const telegramUrl = `https://t.me/kendogamebot?start=${referralCode}`;
-            window.location.href = telegramUrl;
+            // Create referral token via backend API
+            fetch('https://keno-server-wzt6.onrender.com/api/auth/referral-token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ referralCode })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.token) {
+                    console.log('Referral token created:', data.token);
+                    // Redirect to Telegram bot with token
+                    const telegramUrl = `https://t.me/kendogamebot?start=${data.token}`;
+                    window.location.href = telegramUrl;
+                } else {
+                    console.error('Failed to create referral token');
+                    // Fallback: redirect without referral
+                    window.location.href = 'https://t.me/kendogamebot';
+                }
+            })
+            .catch(err => {
+                console.error('Error creating referral token:', err);
+                // Fallback: redirect without referral
+                window.location.href = 'https://t.me/kendogamebot';
+            });
         } else {
             // No referral code, redirect to bot without parameter
             window.location.href = 'https://t.me/kendogamebot';
