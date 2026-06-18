@@ -931,7 +931,7 @@ function ReferralModal({ isOpen, onClose }: ReferralModalProps) {
 
   const copyReferralCode = async () => {
     try {
-      const fullLink = `https://keno-game-eight.vercel.app/?ref=${referralCode}`;
+      const fullLink = `https://t.me/kendogamebot?startapp=${referralCode}`;
       if (navigator.clipboard && window.isSecureContext) {
         await navigator.clipboard.writeText(fullLink);
       } else {
@@ -950,8 +950,8 @@ function ReferralModal({ isOpen, onClose }: ReferralModalProps) {
   };
 
   const shareViaTelegram = () => {
-    const message = `🎁 Join Keno Game using my referral code: ${referralCode}\n\nGet 50 free chips when you sign up!\n\nhttps://keno-game-eight.vercel.app/?ref=${referralCode}`;
-    const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent('https://keno-game-eight.vercel.app/?ref=' + referralCode)}&text=${encodeURIComponent(message)}`;
+    const message = `🎁 Join Keno Game using my referral code: ${referralCode}\n\nGet 50 free chips when you sign up!\n\nhttps://t.me/kendogamebot?startapp=${referralCode}`;
+    const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent('https://t.me/kendogamebot?startapp=' + referralCode)}&text=${encodeURIComponent(message)}`;
     window.open(telegramUrl, '_blank');
   };
 
@@ -1000,7 +1000,7 @@ function ReferralModal({ isOpen, onClose }: ReferralModalProps) {
                 <p className="text-amber-300 text-sm font-semibold mb-2">Your Referral Link</p>
                 <div className="flex items-center gap-2">
                   <div className="flex-1 bg-slate-900/80 rounded-lg px-3 py-3 text-white font-mono text-xs tracking-wider font-bold break-all">
-                    https://keno-game-eight.vercel.app/?ref={referralCode}
+                    https://t.me/kendogamebot?startapp={referralCode}
                   </div>
                   <button
                     onClick={() => copyReferralCode()}
@@ -1450,50 +1450,41 @@ function App() {
       const initData = window.Telegram?.WebApp.initData;
       console.log('InitData:', initData);
 
-      // Extract referral code from multiple sources
+      // Extract start_param from multiple sources
       let startParam: string | null = null;
 
-      // 1. Check URL query parameters for ref (direct WebApp URL)
-      if (typeof window !== 'undefined') {
-        const urlParams = new URLSearchParams(window.location.search);
-        startParam = urlParams.get('ref');
-        console.log('Referral code from URL (ref):', startParam);
+      // 1. Check initDataUnsafe.start_param (for Mini Apps)
+      const initDataUnsafe = window.Telegram?.WebApp.initDataUnsafe;
+      console.log('initDataUnsafe:', JSON.stringify(initDataUnsafe, null, 2));
+      console.log('initDataUnsafe keys:', Object.keys(initDataUnsafe || {}));
+      console.log('initDataUnsafe.start_param:', (initDataUnsafe as any)?.start_param);
+      if ((initDataUnsafe as any)?.start_param) {
+        startParam = (initDataUnsafe as any).start_param;
+        console.log('Start param from initDataUnsafe:', startParam);
       }
 
-      // 2. Check initDataUnsafe.start_param (for Mini Apps with startapp)
-      if (!startParam) {
-        const initDataUnsafe = window.Telegram?.WebApp.initDataUnsafe;
-        console.log('initDataUnsafe:', JSON.stringify(initDataUnsafe, null, 2));
-        console.log('initDataUnsafe keys:', Object.keys(initDataUnsafe || {}));
-        console.log('initDataUnsafe.start_param:', (initDataUnsafe as any)?.start_param);
-        if ((initDataUnsafe as any)?.start_param) {
-          startParam = (initDataUnsafe as any).start_param;
-          console.log('Referral code from initDataUnsafe:', startParam);
-        }
-      }
-
-      // 3. Check URL query parameters for startapp (Mini Apps) or start (regular bots)
+      // 2. Check URL query parameters for startapp (Mini Apps) or start (regular bots)
       if (!startParam && typeof window !== 'undefined') {
         const urlParams = new URLSearchParams(window.location.search);
         startParam = urlParams.get('startapp') || urlParams.get('start');
-        console.log('Referral code from URL (startapp/start):', startParam);
+        console.log('Start param from URL:', startParam);
       }
 
-      // 4. Parse initData as query string for startapp or start
+      // 3. Parse initData as query string for startapp or start
       if (!startParam && initData) {
         const params = new URLSearchParams(initData);
         startParam = params.get('startapp') || params.get('start');
-        console.log('Referral code from initData query string:', startParam);
+        console.log('Start param from initData query string:', startParam);
       }
 
-      // 5. Check tgWebAppData in URL hash for startapp or start
+      // 4. Check tgWebAppData in URL hash for startapp or start
       if (!startParam && typeof window !== 'undefined') {
         const hash = window.location.hash;
         console.log('URL hash:', hash);
         if (hash.includes('tgWebAppData')) {
           const hashParams = new URLSearchParams(hash.split('?')[1] || '');
           startParam = hashParams.get('startapp') || hashParams.get('start');
-          console.log('Referral code from hash:', startParam);
+          console.log('Start param from hash:', startParam);
         }
       }
 
