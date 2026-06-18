@@ -949,8 +949,8 @@ function ReferralModal({ isOpen, onClose }: ReferralModalProps) {
   };
 
   const shareViaTelegram = () => {
-    const message = `🎁 Join Keno Game using my referral code: ${referralCode}\n\nGet 50 free chips when you sign up!\n\nhttps://keno-game-eight.vercel.app?ref=${referralCode}`;
-    const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent('https://keno-game-eight.vercel.app?ref=' + referralCode)}&text=${encodeURIComponent(message)}`;
+    const message = `🎁 Join Keno Game using my referral code: ${referralCode}\n\nGet 50 free chips when you sign up!\n\nhttps://t.me/kendogamebot?ref=${referralCode}`;
+    const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent('https://t.me/kendogamebot?ref=' + referralCode)}&text=${encodeURIComponent(message)}`;
     window.open(telegramUrl, '_blank');
   };
 
