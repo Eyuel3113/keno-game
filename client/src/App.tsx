@@ -896,6 +896,191 @@ function WithdrawModal({ isOpen, onClose }: WithdrawModalProps) {
   );
 }
 
+interface ReferralModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+function ReferralModal({ isOpen, onClose }: ReferralModalProps) {
+  const { token } = useStore();
+  const [referralCode, setReferralCode] = useState('');
+  const [referredCount, setReferredCount] = useState(0);
+  const [completedReferrals, setCompletedReferrals] = useState(0);
+  const [referredUsers, setReferredUsers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchReferralInfo();
+    }
+  }, [isOpen]);
+
+  const fetchReferralInfo = async () => {
+    setLoading(true);
+    try {
+      const res = await authApi.getReferralInfo();
+      setReferralCode(res.data.referralCode);
+      setReferredCount(res.data.referredCount);
+      setCompletedReferrals(res.data.completedReferrals);
+      setReferredUsers(res.data.referredUsers || []);
+    } catch (error) {
+      console.error('Failed to fetch referral info:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const copyReferralCode = async () => {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(referralCode);
+      } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = referralCode;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-9999px';
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
+  const shareViaTelegram = () => {
+    const message = `🎁 Join Keno Game using my referral code: ${referralCode}\n\nGet 50 free chips when you sign up!\n\n${window.location.origin}?ref=${referralCode}`;
+    const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(window.location.origin + '?ref=' + referralCode)}&text=${encodeURIComponent(message)}`;
+    window.open(telegramUrl, '_blank');
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div
+      className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-start justify-center z-50 p-4 overflow-y-auto"
+      onClick={onClose}
+    >
+      <div
+        className="bg-slate-900 border border-slate-700/60 rounded-3xl p-6 w-full max-w-sm shadow-2xl relative animate-scale-up my-8 sm:my-16"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between mb-5 border-b border-slate-700/50 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-xl">
+              🎁
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-white leading-tight">Referral Program</h3>
+              <p className="text-[10px] sm:text-xs text-slate-400">Earn 10% bonus on referrals</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center text-sm transition-colors cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="space-y-4">
+          {loading ? (
+            <div className="animate-pulse space-y-4">
+              <div className="h-4 bg-slate-700 rounded w-1/2"></div>
+              <div className="h-12 bg-slate-700 rounded"></div>
+              <div className="h-4 bg-slate-700 rounded w-3/4"></div>
+            </div>
+          ) : (
+            <>
+              {/* Referral Code Card */}
+              <div className="bg-gradient-to-br from-amber-600/20 to-orange-600/20 border border-amber-500/30 rounded-xl p-4">
+                <p className="text-amber-300 text-sm font-semibold mb-2">Your Referral Code</p>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 bg-slate-900/80 rounded-lg px-4 py-3 text-white font-mono text-xl tracking-wider font-bold">
+                    {referralCode}
+                  </div>
+                  <button
+                    onClick={copyReferralCode}
+                    className="p-3 bg-amber-600 hover:bg-amber-500 rounded-lg transition-colors"
+                    title="Copy code"
+                  >
+                    📋
+                  </button>
+                </div>
+              </div>
+
+              {/* Telegram Share Button */}
+              <button
+                onClick={shareViaTelegram}
+                className="w-full py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 rounded-xl text-white font-semibold transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.14.18-.357.295-.6.295-.002 0-.003 0-.005 0-.319 0-.6-.258-.6-.6 0-.06.012-.118.034-.172l2.09-5.03-4.61 1.15c-.5.125-.976-.017-1.14-.64L5.03 8.19c-.164-.623.21-1.05.848-1.05h10.66c.638 0 .954.427.79 1.05z"/>
+                </svg>
+                Share via Telegram
+              </button>
+
+              {/* Stats */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-slate-700/50 rounded-xl p-4 text-center">
+                  <p className="text-slate-400 text-xs mb-1">Total Referred</p>
+                  <p className="text-white text-2xl font-bold">{referredCount}</p>
+                </div>
+                <div className="bg-slate-700/50 rounded-xl p-4 text-center">
+                  <p className="text-slate-400 text-xs mb-1">Completed Deposits</p>
+                  <p className="text-emerald-400 text-2xl font-bold">{completedReferrals}</p>
+                </div>
+              </div>
+
+              {/* Referred Users List */}
+              {referredUsers.length > 0 && (
+                <div className="bg-slate-700/30 rounded-xl p-4">
+                  <p className="text-white text-sm font-semibold mb-3">Referred Users</p>
+                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                    {referredUsers.map((user) => (
+                      <div key={user.id} className="flex items-center justify-between bg-slate-800/50 rounded-lg px-3 py-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 bg-amber-600/20 rounded-full flex items-center justify-center">
+                            <span className="text-amber-400 text-sm">👤</span>
+                          </div>
+                          <div>
+                            <p className="text-white text-xs font-medium">
+                              {user.telegramUsername ? `@${user.telegramUsername}` : user.email || 'Unknown'}
+                            </p>
+                            <p className="text-slate-500 text-xs">
+                              {user.phoneNumber || 'No phone'}
+                            </p>
+                          </div>
+                        </div>
+                        {user.hasReceivedFirstDepositBonus ? (
+                          <span className="text-emerald-400 text-xs font-semibold">✓ Completed</span>
+                        ) : (
+                          <span className="text-slate-500 text-xs">Pending</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Bonus Info */}
+              <div className="bg-emerald-600/10 border border-emerald-500/30 rounded-xl p-4">
+                <p className="text-emerald-300 text-sm font-semibold mb-1">🎉 Earn 10% Bonus!</p>
+                <p className="text-slate-400 text-xs leading-relaxed">
+                  Get 10% of your referral's first deposit amount as a bonus when they make their first deposit.
+                </p>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 interface TransactionHistoryModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -1066,9 +1251,10 @@ interface HeaderProps {
   onOpenHistory: () => void;
   onOpenTransfer: () => void;
   onOpenSettings: () => void;
+  onOpenReferral: () => void;
 }
 
-function Header({ onOpenDeposit, onOpenWithdraw, onOpenHistory, onOpenTransfer, onOpenSettings }: HeaderProps) {
+function Header({ onOpenDeposit, onOpenWithdraw, onOpenHistory, onOpenTransfer, onOpenSettings, onOpenReferral }: HeaderProps) {
   const { user, logout, balance } = useStore();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -1162,6 +1348,12 @@ function Header({ onOpenDeposit, onOpenWithdraw, onOpenHistory, onOpenTransfer, 
                 >
                   <span className="opacity-70">📜</span> Transaction History
                 </button>
+                <button
+                  onClick={() => { onOpenReferral(); setIsMenuOpen(false); }}
+                  className="w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-slate-700/50 hover:text-amber-400 transition-colors flex items-center gap-2 cursor-pointer"
+                >
+                  <span className="opacity-70">🎁</span> Referral
+                </button>
                 {/* Settings and Sign Out only for admin users */}
                 {user?.role === 'ADMIN' && (
                   <>
@@ -1199,6 +1391,7 @@ function App() {
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isReferralOpen, setIsReferralOpen] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const navigate = useNavigate();
 
@@ -1321,12 +1514,13 @@ function App() {
       />
 
       {token && (
-        <Header 
-          onOpenDeposit={() => setIsDepositOpen(true)} 
+        <Header
+          onOpenDeposit={() => setIsDepositOpen(true)}
           onOpenWithdraw={() => setIsWithdrawOpen(true)}
           onOpenHistory={() => setIsHistoryOpen(true)}
           onOpenTransfer={() => setIsTransferOpen(true)}
           onOpenSettings={() => setIsSettingsOpen(true)}
+          onOpenReferral={() => setIsReferralOpen(true)}
         />
       )}
 
@@ -1386,6 +1580,7 @@ function App() {
       <TransferModal isOpen={isTransferOpen} onClose={() => setIsTransferOpen(false)} />
       <WithdrawModal isOpen={isWithdrawOpen} onClose={() => setIsWithdrawOpen(false)} />
       <TransactionHistoryModal isOpen={isHistoryOpen} onClose={() => setIsHistoryOpen(false)} />
+      <ReferralModal isOpen={isReferralOpen} onClose={() => setIsReferralOpen(false)} />
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
     </div>
   );
