@@ -379,6 +379,53 @@ router.post('/deposits/:id/approve', authenticate, requireAdmin, async (req: Aut
       return res.status(400).json({ message: 'Not a deposit transaction' });
     }
 
+    // Check if this is the user's first deposit and they have a referrer
+    const isFirstDeposit = !transaction.user.hasReceivedFirstDepositBonus;
+    let referralBonus = 0;
+    let referrerMessage = '';
+
+    if (isFirstDeposit && transaction.user.referredBy) {
+      // Calculate 10% referral bonus
+      referralBonus = transaction.amount * 0.1;
+      
+      // Get referrer's wallet
+      const referrer = await prisma.user.findUnique({
+        where: { id: transaction.user.referredBy },
+        include: { wallet: true }
+      });
+
+      if (referrer && referrer.wallet) {
+        // Add bonus to referrer's wallet
+        await prisma.wallet.update({
+          where: { userId: referrer.id },
+          data: { balance: { increment: referralBonus } }
+        });
+
+        // Create transaction for referral bonus
+        await prisma.transaction.create({
+          data: {
+            userId: referrer.id,
+            type: 'DEPOSIT',
+            amount: referralBonus,
+            status: 'COMPLETED',
+            description: `Referral bonus from ${transaction.user.telegramUsername || transaction.user.email || 'referred user'}`
+          }
+        });
+
+        // Notify referrer
+        if (referrer.telegramId) {
+          const bonusMessage = `
+<b>🎉 Referral Bonus Received!</b>
+
+You received ${referralBonus.toFixed(2)} ETB as a referral bonus from ${transaction.user.telegramUsername || transaction.user.email || 'a referred user'}'s first deposit.
+          `.trim();
+          await sendTelegramMessageToUser(referrer.telegramId, bonusMessage);
+        }
+
+        referrerMessage = `\n\nReferral bonus of ${referralBonus.toFixed(2)} ETB has been credited to your referrer.`;
+      }
+    }
+
     // Add balance and update transaction status
     await prisma.$transaction([
       prisma.wallet.update({
@@ -388,7 +435,14 @@ router.post('/deposits/:id/approve', authenticate, requireAdmin, async (req: Aut
       prisma.transaction.update({
         where: { id: req.params.id },
         data: { status: 'COMPLETED', updatedAt: new Date() }
-      })
+      }),
+      // Mark user as having received first deposit bonus if applicable
+      ...(isFirstDeposit ? [
+        prisma.user.update({
+          where: { id: transaction.userId },
+          data: { hasReceivedFirstDepositBonus: true }
+        })
+      ] : [])
     ]);
 
     // Send notification to user
@@ -396,7 +450,7 @@ router.post('/deposits/:id/approve', authenticate, requireAdmin, async (req: Aut
       const message = `
 <b>✅ Deposit Approved</b>
 
-Your deposit of ${transaction.amount} ETB has been approved and added to your wallet.
+Your deposit of ${transaction.amount} ETB has been approved and added to your wallet.${referrerMessage}
 
 New balance: ${transaction.user.wallet.balance + transaction.amount} ETB
 

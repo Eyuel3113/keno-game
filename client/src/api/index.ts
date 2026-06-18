@@ -43,8 +43,8 @@ export const authApi = {
   login: (identifier: string, password: string) =>
     api.post<LoginResponse>('/auth/login', { identifier, password }),
 
-  register: (email: string, password: string, phoneNumber?: string) =>
-    api.post<{ message: string }>('/auth/register', { email, password, phoneNumber }),
+  register: (email: string, password: string, phoneNumber?: string, referralCode?: string) =>
+    api.post<{ message: string }>('/auth/register', { email, password, phoneNumber, referralCode }),
 
   verifyEmail: (token: string) =>
     api.get<{ message: string }>(`/auth/verify-email?token=${token}`),
@@ -63,6 +63,9 @@ export const authApi = {
 
   changePassword: (currentPassword: string, newPassword: string) =>
     api.post<{ message: string }>('/auth/change-password', { currentPassword, newPassword }),
+
+  getReferralInfo: () =>
+    api.get<{ referralCode: string; referredCount: number; completedReferrals: number; referredUsers: any[] }>('/auth/referral'),
 };
 
 // ─── Wallet ──────────────────────────────────────────────────────────────────

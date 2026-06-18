@@ -34,11 +34,11 @@ export const useAuth = () => {
     }
   };
 
-  const register = async (email: string, password: string, phoneNumber?: string, toastFn?: ToastFn) => {
+  const register = async (email: string, password: string, phoneNumber?: string, toastFn?: ToastFn, referralCode?: string) => {
     setLoading(true);
     setError(null);
     try {
-      await authApi.register(email, password, phoneNumber);
+      await authApi.register(email, password, phoneNumber, referralCode);
       // Don't navigate — caller will show "check your email" UI
     } catch (err: unknown) {
       const msg =

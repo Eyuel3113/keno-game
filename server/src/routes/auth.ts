@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import prisma from '../config/db';
 import { sendVerificationEmail, sendPasswordResetEmail } from '../services/emailService';
+import { assignReferralCode, validateReferralCode } from '../utils/referral';
 
 const router = Router();
 
@@ -22,7 +23,7 @@ function formatEthiopianPhoneNumber(phone: string): string {
 
 // ─── Register ─────────────────────────────────────────────────────────────────
 router.post('/register', async (req: Request, res: Response) => {
-  const { email, password, phoneNumber } = req.body;
+  const { email, password, phoneNumber, referralCode } = req.body;
 
   if (!email || !password) {
     return res.status(400).json({ message: 'Email and password are required' });
@@ -43,20 +44,34 @@ router.post('/register', async (req: Request, res: Response) => {
       }
     }
 
+    // Validate referral code if provided
+    let referredBy: string | null = null;
+    if (referralCode) {
+      const referrer = await validateReferralCode(referralCode);
+      if (!referrer) {
+        return res.status(400).json({ message: 'Invalid referral code' });
+      }
+      referredBy = referrer.id;
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
     const verifyToken = crypto.randomBytes(32).toString('hex');
     const verifyExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
-    await prisma.user.create({
+    const newUser = await prisma.user.create({
       data: {
         email,
         phoneNumber: formattedPhone,
         password: hashedPassword,
         verifyToken,
         verifyExpires,
+        referredBy,
         wallet: { create: { balance: 50 } },
       },
     });
+
+    // Generate referral code for the new user
+    await assignReferralCode(newUser.id);
 
     // Send verification email (non-blocking — don't fail registration if email fails)
     sendVerificationEmail(email, verifyToken).catch((err) =>
@@ -481,6 +496,56 @@ router.post('/telegram', async (req: Request, res: Response) => {
   } catch (err) {
     console.error('[Telegram Auth] Error:', err);
     return res.status(500).json({ message: 'Server error', error: String(err) });
+  }
+});
+
+// ─── Get Referral Info ─────────────────────────────────────────────────────────
+router.get('/referral', authenticate, async (req: AuthRequest, res: Response) => {
+  const userId = req.user?.id;
+
+  if (!userId) {
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        referralCode: true,
+        referredUsers: {
+          select: {
+            id: true,
+            telegramUsername: true,
+            email: true,
+            createdAt: true,
+            hasReceivedFirstDepositBonus: true
+          }
+        }
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Ensure user has a referral code
+    if (!user.referralCode) {
+      const code = await assignReferralCode(userId);
+      user.referralCode = code;
+    }
+
+    const referredCount = user.referredUsers.length;
+    const completedReferrals = user.referredUsers.filter(u => u.hasReceivedFirstDepositBonus).length;
+
+    return res.json({
+      referralCode: user.referralCode,
+      referredCount,
+      completedReferrals,
+      referredUsers: user.referredUsers
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: 'Server error' });
   }
 });
 

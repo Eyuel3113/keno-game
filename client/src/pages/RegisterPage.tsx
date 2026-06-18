@@ -9,6 +9,7 @@ export default function RegisterPage() {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [referralCode, setReferralCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
@@ -43,7 +44,7 @@ export default function RegisterPage() {
     }
 
     try {
-      await register(email, password, formattedPhone, toast);
+      await register(email, password, formattedPhone, toast, referralCode);
       setSubmitted(true);
     } catch {
       // error already shown via toast
@@ -162,6 +163,20 @@ export default function RegisterPage() {
                     className="w-full bg-slate-700/60 border border-slate-600 rounded-r-xl px-4 py-3 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label htmlFor="reg-referral" className="block text-sm font-medium text-slate-300 mb-2">
+                  Referral Code (Optional)
+                </label>
+                <input
+                  id="reg-referral"
+                  type="text"
+                  value={referralCode}
+                  onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                  placeholder="Enter referral code"
+                  className="w-full bg-slate-700/60 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all uppercase"
+                />
               </div>
 
               <div>
