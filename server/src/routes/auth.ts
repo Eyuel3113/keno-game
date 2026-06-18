@@ -517,6 +517,7 @@ router.get('/referral', authenticate, async (req: AuthRequest, res: Response) =>
             id: true,
             telegramUsername: true,
             email: true,
+            phoneNumber: true,
             createdAt: true,
             hasReceivedFirstDepositBonus: true
           }
