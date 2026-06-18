@@ -931,11 +931,12 @@ function ReferralModal({ isOpen, onClose }: ReferralModalProps) {
 
   const copyReferralCode = async () => {
     try {
+      const fullLink = `https://t.me/kendogamebot?ref=${referralCode}`;
       if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(referralCode);
+        await navigator.clipboard.writeText(fullLink);
       } else {
         const textArea = document.createElement('textarea');
-        textArea.value = referralCode;
+        textArea.value = fullLink;
         textArea.style.position = 'fixed';
         textArea.style.left = '-9999px';
         document.body.appendChild(textArea);
@@ -994,17 +995,17 @@ function ReferralModal({ isOpen, onClose }: ReferralModalProps) {
             </div>
           ) : (
             <>
-              {/* Referral Code Card */}
+              {/* Referral Link Card */}
               <div className="bg-gradient-to-br from-amber-600/20 to-orange-600/20 border border-amber-500/30 rounded-xl p-4">
-                <p className="text-amber-300 text-sm font-semibold mb-2">Your Referral Code</p>
+                <p className="text-amber-300 text-sm font-semibold mb-2">Your Referral Link</p>
                 <div className="flex items-center gap-2">
-                  <div className="flex-1 bg-slate-900/80 rounded-lg px-4 py-3 text-white font-mono text-xl tracking-wider font-bold">
-                    {referralCode}
+                  <div className="flex-1 bg-slate-900/80 rounded-lg px-3 py-3 text-white font-mono text-xs tracking-wider font-bold break-all">
+                    https://t.me/kendogamebot?ref={referralCode}
                   </div>
                   <button
-                    onClick={copyReferralCode}
-                    className="p-3 bg-amber-600 hover:bg-amber-500 rounded-lg transition-colors"
-                    title="Copy code"
+                    onClick={() => copyReferralCode()}
+                    className="p-3 bg-amber-600 hover:bg-amber-500 rounded-lg transition-colors flex-shrink-0"
+                    title="Copy link"
                   >
                     📋
                   </button>
