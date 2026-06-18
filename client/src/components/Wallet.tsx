@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useStore } from '../store';
-import { walletApi } from '../api';
+import { walletApi, authApi } from '../api';
+import { useToast } from '../context/ToastContext';
 
 export default function Wallet() {
   const { balance, setBalance } = useStore();
-  
-  const [activeTab, setActiveTab] = useState<'deposit' | 'withdraw' | 'transfer' | null>(null);
+  const { toast } = useToast();
+
+  const [activeTab, setActiveTab] = useState<'deposit' | 'withdraw' | 'transfer' | 'referral' | null>(null);
 
   // Deposit State
   const [depositAmount, setDepositAmount] = useState(100);
@@ -19,7 +21,14 @@ export default function Wallet() {
   // Transfer State
   const [recipientEmail, setRecipientEmail] = useState('');
   const [transferAmount, setTransferAmount] = useState(50);
-  
+
+  // Referral State
+  const [referralCode, setReferralCode] = useState('');
+  const [referredCount, setReferredCount] = useState(0);
+  const [completedReferrals, setCompletedReferrals] = useState(0);
+  const [referredUsers, setReferredUsers] = useState<any[]>([]);
+  const [referralLoading, setReferralLoading] = useState(false);
+
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
@@ -28,10 +37,42 @@ export default function Wallet() {
     Telebirr: '0911234567'
   };
 
+  useEffect(() => {
+    if (activeTab === 'referral') {
+      fetchReferralInfo();
+    }
+  }, [activeTab]);
+
+  const fetchReferralInfo = async () => {
+    setReferralLoading(true);
+    try {
+      const res = await authApi.getReferralInfo();
+      setReferralCode(res.data.referralCode);
+      setReferredCount(res.data.referredCount);
+      setCompletedReferrals(res.data.completedReferrals);
+      setReferredUsers(res.data.referredUsers || []);
+    } catch (error) {
+      console.error('Failed to fetch referral info:', error);
+    } finally {
+      setReferralLoading(false);
+    }
+  };
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     setMessage({ text: 'Account number copied!', type: 'success' });
     setTimeout(() => setMessage(null), 2000);
+  };
+
+  const copyReferralCode = () => {
+    navigator.clipboard.writeText(referralCode);
+    toast('Referral code copied!', 'success');
+  };
+
+  const shareViaTelegram = () => {
+    const message = `🎁 Join Keno Game using my referral code: ${referralCode}\n\nGet 50 free chips when you sign up!\n\n${window.location.origin}?ref=${referralCode}`;
+    const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(window.location.origin + '?ref=' + referralCode)}&text=${encodeURIComponent(message)}`;
+    window.open(telegramUrl, '_blank');
   };
 
   const handleDeposit = async () => {
@@ -162,6 +203,16 @@ export default function Wallet() {
             }`}
           >
             💸 Transfer
+          </button>
+          <button
+            onClick={() => { setActiveTab(activeTab === 'referral' ? null : 'referral'); setMessage(null); }}
+            className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+              activeTab === 'referral'
+                ? 'bg-amber-600 border-amber-400 text-white'
+                : 'bg-amber-600/10 hover:bg-amber-600/20 text-amber-300 border-amber-600/20 hover:border-amber-500'
+            }`}
+          >
+            🎁 Referral
           </button>
         </div>
 
@@ -310,6 +361,100 @@ export default function Wallet() {
             >
               {loading ? 'Processing…' : `Transfer ${transferAmount} ETB`}
             </button>
+          </div>
+        )}
+
+        {/* Referral panel */}
+        {activeTab === 'referral' && (
+          <div className="mt-3 space-y-3">
+            {referralLoading ? (
+              <div className="animate-pulse space-y-3">
+                <div className="h-4 bg-slate-700 rounded w-1/2"></div>
+                <div className="h-12 bg-slate-700 rounded"></div>
+                <div className="h-4 bg-slate-700 rounded w-3/4"></div>
+              </div>
+            ) : (
+              <>
+                {/* Referral Code Card */}
+                <div className="bg-gradient-to-br from-amber-600/20 to-orange-600/20 border border-amber-500/30 rounded-xl p-4">
+                  <p className="text-amber-300 text-sm font-semibold mb-2">Your Referral Code</p>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 bg-slate-900/80 rounded-lg px-4 py-3 text-white font-mono text-xl tracking-wider font-bold">
+                      {referralCode}
+                    </div>
+                    <button
+                      onClick={copyReferralCode}
+                      className="p-3 bg-amber-600 hover:bg-amber-500 rounded-lg transition-colors"
+                      title="Copy code"
+                    >
+                      📋
+                    </button>
+                  </div>
+                </div>
+
+                {/* Telegram Share Button */}
+                <button
+                  onClick={shareViaTelegram}
+                  className="w-full py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 rounded-xl text-white font-semibold transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+                >
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.14.18-.357.295-.6.295-.002 0-.003 0-.005 0-.319 0-.6-.258-.6-.6 0-.06.012-.118.034-.172l2.09-5.03-4.61 1.15c-.5.125-.976-.017-1.14-.64L5.03 8.19c-.164-.623.21-1.05.848-1.05h10.66c.638 0 .954.427.79 1.05z"/>
+                  </svg>
+                  Share via Telegram
+                </button>
+
+                {/* Stats */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-slate-700/50 rounded-xl p-4 text-center">
+                    <p className="text-slate-400 text-xs mb-1">Total Referred</p>
+                    <p className="text-white text-2xl font-bold">{referredCount}</p>
+                  </div>
+                  <div className="bg-slate-700/50 rounded-xl p-4 text-center">
+                    <p className="text-slate-400 text-xs mb-1">Completed Deposits</p>
+                    <p className="text-emerald-400 text-2xl font-bold">{completedReferrals}</p>
+                  </div>
+                </div>
+
+                {/* Referred Users List */}
+                {referredUsers.length > 0 && (
+                  <div className="bg-slate-700/30 rounded-xl p-4">
+                    <p className="text-white text-sm font-semibold mb-3">Referred Users</p>
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                      {referredUsers.map((user) => (
+                        <div key={user.id} className="flex items-center justify-between bg-slate-800/50 rounded-lg px-3 py-2">
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 bg-amber-600/20 rounded-full flex items-center justify-center">
+                              <span className="text-amber-400 text-sm">👤</span>
+                            </div>
+                            <div>
+                              <p className="text-white text-xs font-medium">
+                                {user.telegramUsername ? `@${user.telegramUsername}` : user.email || 'Unknown'}
+                              </p>
+                              <p className="text-slate-500 text-xs">
+                                {user.phoneNumber || 'No phone'}
+                              </p>
+                            </div>
+                          </div>
+                          {user.hasReceivedFirstDepositBonus ? (
+                            <span className="text-emerald-400 text-xs font-semibold">✓ Completed</span>
+                          ) : (
+                            <span className="text-slate-500 text-xs">Pending</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Bonus Info */}
+                <div className="bg-emerald-600/10 border border-emerald-500/30 rounded-xl p-4">
+                  <p className="text-emerald-300 text-sm font-semibold mb-1">🎉 Earn 10% Bonus!</p>
+                  <p className="text-slate-400 text-xs leading-relaxed">
+                    Get 10% of your referral's first deposit amount as a bonus when they make their first deposit.
+                  </p>
+                </div>
+              </>
+            )}
           </div>
         )}
 
