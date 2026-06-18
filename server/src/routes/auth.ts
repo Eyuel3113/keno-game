@@ -416,7 +416,14 @@ router.post('/telegram', async (req: Request, res: Response) => {
 
     const telegramId = user.id.toString();
     console.log('[Telegram Auth] Looking for user with telegramId:', telegramId);
-    
+
+    // Extract referral code from start parameter in initData
+    let referralCode: string | null = null;
+    if (initData && initData.start_param) {
+      referralCode = initData.start_param;
+      console.log('[Telegram Auth] Referral code from start_param:', referralCode);
+    }
+
     // Find or create user
     let existingUser = await prisma.user.findUnique({
       where: { telegramId },
@@ -459,6 +466,18 @@ router.post('/telegram', async (req: Request, res: Response) => {
       });
     }
 
+    // Validate referral code if provided
+    let referredBy: string | null = null;
+    if (referralCode) {
+      const referrer = await validateReferralCode(referralCode);
+      if (referrer) {
+        referredBy = referrer.id;
+        console.log('[Telegram Auth] Referral code validated, referred by:', referrer.id);
+      } else {
+        console.log('[Telegram Auth] Invalid referral code:', referralCode);
+      }
+    }
+
     // Create new user
     console.log('[Telegram Auth] Creating new user');
     const newUser = await prisma.user.create({
@@ -469,10 +488,14 @@ router.post('/telegram', async (req: Request, res: Response) => {
         telegramLastName: user.last_name,
         telegramLanguageCode: user.language_code,
         emailVerified: true, // Telegram users are pre-verified
+        referredBy,
         wallet: { create: { balance: 50 } },
       },
       include: { wallet: true },
     });
+
+    // Generate referral code for the new user
+    await assignReferralCode(newUser.id);
 
     // Generate JWT token
     const token = jwt.sign(
