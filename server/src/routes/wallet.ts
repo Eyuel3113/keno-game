@@ -366,51 +366,71 @@ router.post('/transfer', authenticate, async (req: AuthRequest, res: Response) =
   if (!senderId) return res.status(401).json({ message: 'Unauthorized' });
 
   if (!recipientIdentifier || typeof recipientIdentifier !== 'string') {
-    return res.status(400).json({ message: 'Recipient email or phone is required' });
+    return res.status(400).json({ message: 'Recipient identifier is required' });
   }
 
   if (!amount || typeof amount !== 'number' || amount <= 0) {
     return res.status(400).json({ message: 'Amount must be a positive number' });
   }
 
-  // Determine if identifier is a phone number or email
-  const isPhone = !recipientIdentifier.includes('@');
-  let lookupKey: { email: string } | { phoneNumber: string };
+  // Determine identifier type: phone, email, telegram username, or telegram ID
+  const isPhone = !recipientIdentifier.includes('@') && /^\d+$/.test(recipientIdentifier.replace(/[^\d]/g, ''));
+  const isEmail = recipientIdentifier.includes('@');
+  const isTelegramUsername = recipientIdentifier.startsWith('@');
+  const isTelegramId = !isPhone && !isEmail && !isTelegramUsername && /^\d+$/.test(recipientIdentifier);
 
-  if (isPhone) {
-    // Format Ethiopian phone number
-    let cleanPhone = recipientIdentifier.replace(/[^\d]/g, '');
-    if (cleanPhone.startsWith('0')) cleanPhone = cleanPhone.slice(1);
-    if (cleanPhone.startsWith('251')) cleanPhone = cleanPhone.slice(3);
-    if (!cleanPhone || cleanPhone.length < 9) {
-      return res.status(400).json({ message: 'Invalid phone number. Must be 9 digits.' });
-    }
-    const formattedPhone = `+251${cleanPhone}`;
-
-    // Prevent self-transfer by phone
-    const senderUser = await prisma.user.findUnique({ where: { id: senderId } });
-    if (senderUser?.phoneNumber === formattedPhone) {
-      return res.status(400).json({ message: 'Cannot transfer to yourself' });
-    }
-
-    lookupKey = { phoneNumber: formattedPhone };
-  } else {
-    const normalizedEmail = recipientIdentifier.toLowerCase();
-    if (senderEmail && senderEmail.toLowerCase() === normalizedEmail) {
-      return res.status(400).json({ message: 'Cannot transfer to yourself' });
-    }
-    lookupKey = { email: normalizedEmail };
-  }
+  let recipient;
+  let recipientLabel: string;
 
   try {
-    // 1. Find recipient
-    const recipient = await prisma.user.findUnique({
-      where: lookupKey,
-      include: { wallet: true },
-    });
+    // 1. Find recipient based on identifier type
+    if (isTelegramUsername) {
+      // Transfer by Telegram username
+      const username = recipientIdentifier.startsWith('@') ? recipientIdentifier.slice(1) : recipientIdentifier;
+      recipient = await prisma.user.findFirst({
+        where: { telegramUsername: username },
+        include: { wallet: true },
+      });
+      recipientLabel = `@${username}`;
+    } else if (isTelegramId) {
+      // Transfer by Telegram ID
+      recipient = await prisma.user.findFirst({
+        where: { telegramId: recipientIdentifier },
+        include: { wallet: true },
+      });
+      recipientLabel = `Telegram ID: ${recipientIdentifier}`;
+    } else if (isPhone) {
+      // Transfer by phone number
+      let cleanPhone = recipientIdentifier.replace(/[^\d]/g, '');
+      if (cleanPhone.startsWith('0')) cleanPhone = cleanPhone.slice(1);
+      if (cleanPhone.startsWith('251')) cleanPhone = cleanPhone.slice(3);
+      if (!cleanPhone || cleanPhone.length < 9) {
+        return res.status(400).json({ message: 'Invalid phone number. Must be 9 digits.' });
+      }
+      const formattedPhone = `+251${cleanPhone}`;
+
+      recipient = await prisma.user.findUnique({
+        where: { phoneNumber: formattedPhone },
+        include: { wallet: true },
+      });
+      recipientLabel = formattedPhone;
+    } else {
+      // Transfer by email
+      const normalizedEmail = recipientIdentifier.toLowerCase();
+      recipient = await prisma.user.findUnique({
+        where: { email: normalizedEmail },
+        include: { wallet: true },
+      });
+      recipientLabel = normalizedEmail;
+    }
 
     if (!recipient || !recipient.wallet) {
       return res.status(404).json({ message: 'Recipient not found' });
+    }
+
+    // Prevent self-transfer
+    if (recipient.id === senderId) {
+      return res.status(400).json({ message: 'Cannot transfer to yourself' });
     }
 
     // 2. Find sender wallet
@@ -422,8 +442,6 @@ router.post('/transfer', authenticate, async (req: AuthRequest, res: Response) =
     if (senderWallet.balance < amount) {
       return res.status(400).json({ message: 'Insufficient balance' });
     }
-
-    const recipientLabel = recipient.email;
 
     // 3. Perform transfer inside transaction
     const [updatedSenderWallet] = await prisma.$transaction([
@@ -456,6 +474,14 @@ router.post('/transfer', authenticate, async (req: AuthRequest, res: Response) =
         },
       }),
     ]);
+
+    // Send notification to recipient via Telegram if they have a telegramId
+    if (recipient.telegramId) {
+      await sendTelegramMessageToUser(
+        `💰 You received ${amount} ETB from another user!`,
+        recipient.telegramId
+      ).catch(err => console.error('Failed to send Telegram notification:', err));
+    }
 
     return res.json({ balance: updatedSenderWallet.balance, message: 'Transfer successful' });
   } catch (err) {

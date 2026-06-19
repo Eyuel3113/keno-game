@@ -326,14 +326,14 @@ export default function Wallet() {
           <div className="mt-3 space-y-2.5">
             <div>
               <label htmlFor="transfer-recipient" className="block text-xs font-medium text-slate-400 mb-1">
-                Recipient Email
+                Recipient (Email, Phone, @username, or Telegram ID)
               </label>
               <input
                 id="transfer-recipient"
-                type="email"
+                type="text"
                 value={recipientEmail}
                 onChange={(e) => setRecipientEmail(e.target.value)}
-                placeholder="friend@example.com"
+                placeholder="@username, email, phone, or Telegram ID"
                 className="w-full bg-slate-700/60 border border-slate-600 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 transition-all"
               />
             </div>
