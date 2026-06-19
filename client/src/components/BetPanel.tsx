@@ -47,8 +47,8 @@ export default function BetPanel() {
   const isResultPhase = countdown === 0 && !isDrawing;
   const isBettingPhase = !isDrawing && drawnNumbers.length === 0;
 
-  // Calculate potential winnings
-  const potentialWinnings = calculatePotentialWinnings(picks.length, amount);
+  // Calculate potential winnings (only if amount > 0)
+  const potentialWinnings = amount > 0 ? calculatePotentialWinnings(picks.length, amount) : [];
 
   const handleBet = async () => {
     setBetError(null);
@@ -78,11 +78,35 @@ export default function BetPanel() {
 
   return (
     <div className="bg-slate-800/60 backdrop-blur-sm rounded-2xl border border-slate-700/50 shadow-2xl p-3 flex flex-col gap-3">
-      
+
+      {/* Potential winnings display */}
+      {potentialWinnings.length > 0 && isBettingPhase && (
+        <div className="bg-emerald-900/15 border border-emerald-700/25 rounded-lg px-3 py-2">
+          <p className="text-[10px] text-emerald-400 uppercase tracking-wider font-bold mb-1.5">
+            Potential Winnings
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {potentialWinnings.map((w) => (
+              <div
+                key={w.hits}
+                className="bg-emerald-900/30 border border-emerald-600/30 rounded-md px-2 py-1 text-center"
+              >
+                <div className="text-[9px] text-emerald-300 font-semibold">
+                  {w.hits} hit{w.hits !== 1 ? 's' : ''}
+                </div>
+                <div className="text-[11px] font-bold text-white">
+                  {w.amount.toLocaleString()} ETB
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Betting Control Row (Betting phase only) */}
       {!isResultPhase && (
         <div className="flex gap-1.5 items-center bg-slate-900/40 p-1.5 rounded-xl border border-slate-700/30">
-          
+
           {/* Bet Input Container */}
           <div className="flex-1 min-w-[55px] bg-slate-800/80 border border-slate-700/50 rounded-lg px-2 py-1 flex flex-col justify-center">
             <span className="text-[7.5px] uppercase tracking-wider text-slate-500 font-bold select-none leading-none">
@@ -147,30 +171,6 @@ export default function BetPanel() {
             )}
           </button>
 
-        </div>
-      )}
-
-      {/* Potential winnings display */}
-      {potentialWinnings.length > 0 && isBettingPhase && (
-        <div className="bg-emerald-900/20 border border-emerald-700/30 rounded-xl px-4 py-3">
-          <p className="text-xs text-emerald-400 uppercase tracking-widest font-bold mb-2">
-            Potential Winnings
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {potentialWinnings.map((w) => (
-              <div
-                key={w.hits}
-                className="bg-emerald-900/40 border border-emerald-600/40 rounded-lg px-3 py-1.5 text-center"
-              >
-                <div className="text-[10px] text-emerald-300 font-semibold">
-                  {w.hits} hit{w.hits !== 1 ? 's' : ''}
-                </div>
-                <div className="text-sm font-bold text-white">
-                  {w.amount.toLocaleString()} ETB
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
       )}
 
