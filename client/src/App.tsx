@@ -438,12 +438,12 @@ function TransferModal({ isOpen, onClose }: TransferModalProps) {
           {/* Recipient input */}
           {transferMethod === 'email' ? (
             <div>
-              <label className="block text-xs font-semibold text-slate-400 mb-1.5">Recipient Email</label>
+              <label className="block text-xs font-semibold text-slate-400 mb-1.5">Recipient (Email, @username, or Telegram ID)</label>
               <input
-                type="email"
+                type="text"
                 value={recipientEmail}
                 onChange={(e) => setRecipientEmail(e.target.value)}
-                placeholder="friend@example.com"
+                placeholder="@username, email, or Telegram ID"
                 className="w-full bg-slate-800 border border-slate-700/60 rounded-2xl px-4 py-3 text-white text-sm font-semibold placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-violet-500 transition-all"
               />
             </div>
