@@ -4,6 +4,30 @@ import { useGame } from '../hooks/useGame';
 
 interface PlacedBet { picks: number[]; amount: number; }
 
+// Payout multipliers per [picks][hits]
+const payoutTable: Record<number, number[]> = {
+  1:  [0, 3],
+  2:  [0, 0, 9],
+  3:  [0, 0, 2, 27],
+  4:  [0, 0, 1, 4, 72],
+  5:  [0, 0, 0, 3, 12, 120],
+  6:  [0, 0, 0, 2, 5, 40, 500],
+  7:  [0, 0, 0, 1, 3, 15, 100, 1000],
+  8:  [0, 0, 0, 0, 2, 8, 50, 500, 5000],
+  9:  [0, 0, 0, 0, 1, 5, 20, 150, 2000, 20000],
+  10: [0, 0, 0, 0, 0, 2, 20, 100, 500, 10000, 100000],
+};
+
+const calculatePotentialWinnings = (picks: number, amount: number): { hits: number; multiplier: number; amount: number }[] => {
+  const multiplierRow = payoutTable[picks];
+  if (!multiplierRow) return [];
+  return multiplierRow.map((multiplier, hits) => ({
+    hits,
+    multiplier,
+    amount: amount * multiplier
+  })).filter(w => w.multiplier > 0);
+};
+
 export default function BetPanel() {
   const [amount, setAmount] = useState(10);
   const [betError, setBetError] = useState<string | null>(null);
@@ -22,6 +46,9 @@ export default function BetPanel() {
   const canBet = picks.length > 0 && !isDrawing && countdown > 0 && !!currentRoundId && amount > 0 && amount <= balance;
   const isResultPhase = countdown === 0 && !isDrawing;
   const isBettingPhase = !isDrawing && drawnNumbers.length === 0;
+
+  // Calculate potential winnings
+  const potentialWinnings = calculatePotentialWinnings(picks.length, amount);
 
   const handleBet = async () => {
     setBetError(null);
@@ -120,6 +147,30 @@ export default function BetPanel() {
             )}
           </button>
 
+        </div>
+      )}
+
+      {/* Potential winnings display */}
+      {potentialWinnings.length > 0 && isBettingPhase && (
+        <div className="bg-emerald-900/20 border border-emerald-700/30 rounded-xl px-4 py-3">
+          <p className="text-xs text-emerald-400 uppercase tracking-widest font-bold mb-2">
+            Potential Winnings
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {potentialWinnings.map((w) => (
+              <div
+                key={w.hits}
+                className="bg-emerald-900/40 border border-emerald-600/40 rounded-lg px-3 py-1.5 text-center"
+              >
+                <div className="text-[10px] text-emerald-300 font-semibold">
+                  {w.hits} hit{w.hits !== 1 ? 's' : ''}
+                </div>
+                <div className="text-sm font-bold text-white">
+                  {w.amount.toLocaleString()} ETB
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
