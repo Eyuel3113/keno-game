@@ -13,9 +13,12 @@ const auth_1 = __importDefault(require("./routes/auth"));
 const game_1 = __importDefault(require("./routes/game"));
 const wallet_1 = __importDefault(require("./routes/wallet"));
 const history_1 = __importDefault(require("./routes/history"));
+const admin_1 = __importDefault(require("./routes/admin"));
 const gameSocket_1 = require("./socket/gameSocket");
 const swagger_1 = require("./config/swagger");
 const db_1 = __importDefault(require("./config/db"));
+const scheduler_1 = require("./services/scheduler");
+const path_1 = __importDefault(require("path"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 const server = http_1.default.createServer(app);
@@ -27,6 +30,13 @@ const io = new socket_io_1.Server(server, {
 });
 app.use((0, cors_1.default)());
 app.use(express_1.default.json());
+// Ensure uploads directory exists
+const fs_1 = __importDefault(require("fs"));
+const uploadsDir = path_1.default.join(__dirname, '../uploads');
+if (!fs_1.default.existsSync(uploadsDir)) {
+    fs_1.default.mkdirSync(uploadsDir, { recursive: true });
+}
+app.use('/uploads', express_1.default.static('uploads'));
 // Swagger Docs
 app.use('/api-docs', swagger_ui_express_1.default.serve, swagger_ui_express_1.default.setup(swagger_1.swaggerSpec));
 // Routes
@@ -34,11 +44,14 @@ app.use('/api/auth', auth_1.default);
 app.use('/api/game', game_1.default);
 app.use('/api/wallet', wallet_1.default);
 app.use('/api/history', history_1.default);
+app.use('/api/admin', admin_1.default);
 // Socket.io
 (0, gameSocket_1.initGameSocket)(io);
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
+    // Start game reminder scheduler
+    (0, scheduler_1.startGameReminderScheduler)();
     // Keep-alive ping every 4 minutes to prevent Neon free-tier from suspending
     setInterval(async () => {
         try {

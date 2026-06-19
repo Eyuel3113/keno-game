@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.authenticate = void 0;
+exports.requireAdmin = exports.authenticate = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const authenticate = (req, res, next) => {
     const token = req.header('Authorization')?.split(' ')[1];
@@ -20,4 +20,11 @@ const authenticate = (req, res, next) => {
     }
 };
 exports.authenticate = authenticate;
+const requireAdmin = (req, res, next) => {
+    if (req.user?.role !== 'ADMIN') {
+        return res.status(403).json({ message: 'Admin access required' });
+    }
+    next();
+};
+exports.requireAdmin = requireAdmin;
 //# sourceMappingURL=auth.js.map

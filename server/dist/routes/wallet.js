@@ -6,7 +6,35 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const auth_1 = require("../middleware/auth");
 const db_1 = __importDefault(require("../config/db"));
+const multer_1 = __importDefault(require("multer"));
+const path_1 = __importDefault(require("path"));
+const telegramBot_1 = require("../services/telegramBot");
 const router = (0, express_1.Router)();
+// Configure multer for file uploads
+const storage = multer_1.default.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, 'uploads/');
+    },
+    filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, uniqueSuffix + path_1.default.extname(file.originalname));
+    }
+});
+const upload = (0, multer_1.default)({
+    storage,
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+    fileFilter: (req, file, cb) => {
+        const allowedTypes = /jpeg|jpg|png|gif/;
+        const extname = allowedTypes.test(path_1.default.extname(file.originalname).toLowerCase());
+        const mimetype = allowedTypes.test(file.mimetype);
+        if (extname && mimetype) {
+            return cb(null, true);
+        }
+        else {
+            cb(new Error('Only image files are allowed'));
+        }
+    }
+});
 /**
  * @swagger
  * tags:
@@ -52,6 +80,36 @@ router.get('/balance', auth_1.authenticate, async (req, res) => {
 });
 /**
  * @swagger
+ * /api/wallet/upload:
+ *   post:
+ *     summary: Upload payment proof image
+ *     tags: [Wallet]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required: [file]
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: File uploaded successfully
+ */
+router.post('/upload', auth_1.authenticate, upload.single('file'), async (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ message: 'No file uploaded' });
+    }
+    const fileUrl = `/uploads/${req.file.filename}`;
+    res.json({ fileUrl });
+});
+/**
+ * @swagger
  * /api/wallet/deposit:
  *   post:
  *     summary: Deposit chips into the wallet
@@ -88,28 +146,50 @@ router.get('/balance', auth_1.authenticate, async (req, res) => {
  */
 router.post('/deposit', auth_1.authenticate, async (req, res) => {
     const userId = req.user?.id;
-    const { amount } = req.body;
+    const { amount, paymentMethod, paymentProof } = req.body;
     if (!userId)
         return res.status(401).json({ message: 'Unauthorized' });
     if (!amount || typeof amount !== 'number' || amount <= 0) {
         return res.status(400).json({ message: 'Amount must be a positive number' });
     }
+    if (!paymentMethod || !['CBE', 'TELEBIRR'].includes(paymentMethod)) {
+        return res.status(400).json({ message: 'Payment method is required (CBE or TELEBIRR)' });
+    }
+    if (!paymentProof) {
+        return res.status(400).json({ message: 'Payment proof is required' });
+    }
     try {
-        // Perform update and creation in a transaction
-        const [wallet] = await db_1.default.$transaction([
-            db_1.default.wallet.update({
-                where: { userId },
-                data: { balance: { increment: amount } },
-            }),
-            db_1.default.transaction.create({
-                data: {
-                    userId,
-                    type: 'DEPOSIT',
-                    amount,
-                },
-            }),
-        ]);
-        return res.json({ balance: wallet.balance });
+        // Get user details for notification
+        const user = await db_1.default.user.findUnique({ where: { id: userId } });
+        // Create pending deposit transaction
+        const transaction = await db_1.default.transaction.create({
+            data: {
+                userId,
+                type: 'DEPOSIT',
+                amount,
+                status: 'PENDING',
+                paymentMethod,
+                paymentProof,
+            },
+        });
+        // Send notification to admins
+        const admins = await db_1.default.user.findMany({ where: { role: 'ADMIN' } });
+        const adminTelegramIds = admins
+            .map(admin => admin.telegramId)
+            .filter((id) => id !== null);
+        if (adminTelegramIds.length > 0) {
+            const message = `
+<b>🔔 New Deposit Request</b>
+
+User: ${user?.telegramUsername ? `@${user.telegramUsername}` : user?.email || 'Unknown'}
+Amount: ${amount} ETB
+Method: ${paymentMethod}
+
+Please review and approve in the admin dashboard.
+      `.trim();
+            await (0, telegramBot_1.sendTelegramMessageToAdmins)(message, adminTelegramIds);
+        }
+        return res.json({ transaction, message: 'Deposit request submitted. Awaiting admin approval.' });
     }
     catch (err) {
         console.error(err);
@@ -146,11 +226,17 @@ router.post('/deposit', auth_1.authenticate, async (req, res) => {
  */
 router.post('/withdraw', auth_1.authenticate, async (req, res) => {
     const userId = req.user?.id;
-    const { amount } = req.body;
+    const { amount, paymentMethod, accountNumber } = req.body;
     if (!userId)
         return res.status(401).json({ message: 'Unauthorized' });
     if (!amount || typeof amount !== 'number' || amount <= 0) {
         return res.status(400).json({ message: 'Amount must be a positive number' });
+    }
+    if (!paymentMethod || !['CBE', 'TELEBIRR'].includes(paymentMethod)) {
+        return res.status(400).json({ message: 'Payment method is required (CBE or TELEBIRR)' });
+    }
+    if (!accountNumber || !accountNumber.trim()) {
+        return res.status(400).json({ message: 'Account number is required' });
     }
     try {
         const wallet = await db_1.default.wallet.findUnique({ where: { userId } });
@@ -159,20 +245,43 @@ router.post('/withdraw', auth_1.authenticate, async (req, res) => {
         if (wallet.balance < amount) {
             return res.status(400).json({ message: 'Insufficient balance' });
         }
-        const [updatedWallet] = await db_1.default.$transaction([
-            db_1.default.wallet.update({
-                where: { userId },
-                data: { balance: { decrement: amount } },
-            }),
-            db_1.default.transaction.create({
-                data: {
-                    userId,
-                    type: 'WITHDRAW',
-                    amount,
-                },
-            }),
-        ]);
-        return res.json({ balance: updatedWallet.balance });
+        // Get user details for notification
+        const user = await db_1.default.user.findUnique({ where: { id: userId } });
+        // Deduct balance immediately when creating pending withdrawal
+        await db_1.default.wallet.update({
+            where: { userId },
+            data: { balance: wallet.balance - amount }
+        });
+        // Create pending withdrawal transaction
+        const transaction = await db_1.default.transaction.create({
+            data: {
+                userId,
+                type: 'WITHDRAW',
+                amount,
+                status: 'PENDING',
+                paymentMethod,
+                accountNumber: accountNumber.trim(),
+            },
+        });
+        // Send notification to admins
+        const admins = await db_1.default.user.findMany({ where: { role: 'ADMIN' } });
+        const adminTelegramIds = admins
+            .map(admin => admin.telegramId)
+            .filter((id) => id !== null);
+        if (adminTelegramIds.length > 0) {
+            const message = `
+<b>🔔 New Withdrawal Request</b>
+
+User: ${user?.telegramUsername ? `@${user.telegramUsername}` : user?.email || 'Unknown'}
+Amount: ${amount} ETB
+Method: ${paymentMethod}
+Account: ${accountNumber}
+
+Please review and approve in the admin dashboard.
+      `.trim();
+            await (0, telegramBot_1.sendTelegramMessageToAdmins)(message, adminTelegramIds);
+        }
+        return res.json({ transaction, message: 'Withdrawal request submitted. Amount deducted from wallet. Awaiting admin approval (max 2 hours).' });
     }
     catch (err) {
         console.error(err);
@@ -246,47 +355,69 @@ router.post('/transfer', auth_1.authenticate, async (req, res) => {
     if (!senderId)
         return res.status(401).json({ message: 'Unauthorized' });
     if (!recipientIdentifier || typeof recipientIdentifier !== 'string') {
-        return res.status(400).json({ message: 'Recipient email or phone is required' });
+        return res.status(400).json({ message: 'Recipient identifier is required' });
     }
     if (!amount || typeof amount !== 'number' || amount <= 0) {
         return res.status(400).json({ message: 'Amount must be a positive number' });
     }
-    // Determine if identifier is a phone number or email
-    const isPhone = !recipientIdentifier.includes('@');
-    let lookupKey;
-    if (isPhone) {
-        // Format Ethiopian phone number
-        let cleanPhone = recipientIdentifier.replace(/[^\d]/g, '');
-        if (cleanPhone.startsWith('0'))
-            cleanPhone = cleanPhone.slice(1);
-        if (cleanPhone.startsWith('251'))
-            cleanPhone = cleanPhone.slice(3);
-        if (!cleanPhone || cleanPhone.length < 9) {
-            return res.status(400).json({ message: 'Invalid phone number. Must be 9 digits.' });
-        }
-        const formattedPhone = `+251${cleanPhone}`;
-        // Prevent self-transfer by phone
-        const senderUser = await db_1.default.user.findUnique({ where: { id: senderId } });
-        if (senderUser?.phoneNumber === formattedPhone) {
-            return res.status(400).json({ message: 'Cannot transfer to yourself' });
-        }
-        lookupKey = { phoneNumber: formattedPhone };
-    }
-    else {
-        const normalizedEmail = recipientIdentifier.toLowerCase();
-        if (senderEmail && senderEmail.toLowerCase() === normalizedEmail) {
-            return res.status(400).json({ message: 'Cannot transfer to yourself' });
-        }
-        lookupKey = { email: normalizedEmail };
-    }
+    // Determine identifier type: phone, email, telegram username, or telegram ID
+    const isPhone = !recipientIdentifier.includes('@') && /^\d+$/.test(recipientIdentifier.replace(/[^\d]/g, ''));
+    const isEmail = recipientIdentifier.includes('@');
+    const isTelegramUsername = recipientIdentifier.startsWith('@');
+    const isTelegramId = !isPhone && !isEmail && !isTelegramUsername && /^\d+$/.test(recipientIdentifier);
+    let recipient;
+    let recipientLabel;
     try {
-        // 1. Find recipient
-        const recipient = await db_1.default.user.findUnique({
-            where: lookupKey,
-            include: { wallet: true },
-        });
+        // 1. Find recipient based on identifier type
+        if (isTelegramUsername) {
+            // Transfer by Telegram username
+            const username = recipientIdentifier.startsWith('@') ? recipientIdentifier.slice(1) : recipientIdentifier;
+            recipient = await db_1.default.user.findFirst({
+                where: { telegramUsername: username },
+                include: { wallet: true },
+            });
+            recipientLabel = `@${username}`;
+        }
+        else if (isTelegramId) {
+            // Transfer by Telegram ID
+            recipient = await db_1.default.user.findFirst({
+                where: { telegramId: recipientIdentifier },
+                include: { wallet: true },
+            });
+            recipientLabel = `Telegram ID: ${recipientIdentifier}`;
+        }
+        else if (isPhone) {
+            // Transfer by phone number
+            let cleanPhone = recipientIdentifier.replace(/[^\d]/g, '');
+            if (cleanPhone.startsWith('0'))
+                cleanPhone = cleanPhone.slice(1);
+            if (cleanPhone.startsWith('251'))
+                cleanPhone = cleanPhone.slice(3);
+            if (!cleanPhone || cleanPhone.length < 9) {
+                return res.status(400).json({ message: 'Invalid phone number. Must be 9 digits.' });
+            }
+            const formattedPhone = `+251${cleanPhone}`;
+            recipient = await db_1.default.user.findUnique({
+                where: { phoneNumber: formattedPhone },
+                include: { wallet: true },
+            });
+            recipientLabel = formattedPhone;
+        }
+        else {
+            // Transfer by email
+            const normalizedEmail = recipientIdentifier.toLowerCase();
+            recipient = await db_1.default.user.findUnique({
+                where: { email: normalizedEmail },
+                include: { wallet: true },
+            });
+            recipientLabel = normalizedEmail;
+        }
         if (!recipient || !recipient.wallet) {
             return res.status(404).json({ message: 'Recipient not found' });
+        }
+        // Prevent self-transfer
+        if (recipient.id === senderId) {
+            return res.status(400).json({ message: 'Cannot transfer to yourself' });
         }
         // 2. Find sender wallet
         const senderWallet = await db_1.default.wallet.findUnique({ where: { userId: senderId } });
@@ -296,7 +427,6 @@ router.post('/transfer', auth_1.authenticate, async (req, res) => {
         if (senderWallet.balance < amount) {
             return res.status(400).json({ message: 'Insufficient balance' });
         }
-        const recipientLabel = recipient.email;
         // 3. Perform transfer inside transaction
         const [updatedSenderWallet] = await db_1.default.$transaction([
             // Deduct from sender
@@ -328,6 +458,10 @@ router.post('/transfer', auth_1.authenticate, async (req, res) => {
                 },
             }),
         ]);
+        // Send notification to recipient via Telegram if they have a telegramId
+        if (recipient.telegramId) {
+            await (0, telegramBot_1.sendTelegramMessageToUser)(`💰 You received ${amount} ETB from another user!`, recipient.telegramId).catch(err => console.error('Failed to send Telegram notification:', err));
+        }
         return res.json({ balance: updatedSenderWallet.balance, message: 'Transfer successful' });
     }
     catch (err) {
