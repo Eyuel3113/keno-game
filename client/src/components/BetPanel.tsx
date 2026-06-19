@@ -79,30 +79,6 @@ export default function BetPanel() {
   return (
     <div className="bg-slate-800/60 backdrop-blur-sm rounded-2xl border border-slate-700/50 shadow-2xl p-3 flex flex-col gap-3">
 
-      {/* Potential winnings display */}
-      {potentialWinnings.length > 0 && isBettingPhase && (
-        <div className="bg-emerald-900/15 border border-emerald-700/25 rounded-lg px-3 py-2">
-          <p className="text-[10px] text-emerald-400 uppercase tracking-wider font-bold mb-1.5">
-            Potential Winnings
-          </p>
-          <div className="flex flex-wrap gap-1.5">
-            {potentialWinnings.map((w) => (
-              <div
-                key={w.hits}
-                className="bg-emerald-900/30 border border-emerald-600/30 rounded-md px-2 py-1 text-center"
-              >
-                <div className="text-[9px] text-emerald-300 font-semibold">
-                  {w.hits} hit{w.hits !== 1 ? 's' : ''}
-                </div>
-                <div className="text-[11px] font-bold text-white">
-                  {w.amount.toLocaleString()} ETB
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Betting Control Row (Betting phase only) */}
       {!isResultPhase && (
         <div className="flex gap-1.5 items-center bg-slate-900/40 p-1.5 rounded-xl border border-slate-700/30">
@@ -178,6 +154,30 @@ export default function BetPanel() {
       {betError && (
         <div className="bg-red-900/30 border border-red-700/50 rounded-xl px-4 py-2.5 text-sm text-red-300">
           {betError}
+        </div>
+      )}
+
+      {/* Potential winnings display */}
+      {potentialWinnings.length > 0 && isBettingPhase && (
+        <div className="bg-emerald-900/15 border border-emerald-700/25 rounded-lg px-3 py-2">
+          <p className="text-[10px] text-emerald-400 uppercase tracking-wider font-bold mb-1.5">
+            Potential Winnings
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {potentialWinnings.map((w) => (
+              <div
+                key={w.hits}
+                className="bg-emerald-900/30 border border-emerald-600/30 rounded-md px-2 py-1 text-center"
+              >
+                <div className="text-[9px] text-emerald-300 font-semibold">
+                  {w.hits} hit{w.hits !== 1 ? 's' : ''}
+                </div>
+                <div className="text-[11px] font-bold text-white">
+                  {w.amount.toLocaleString()} ETB
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
