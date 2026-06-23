@@ -446,6 +446,19 @@ router.post('/telegram', async (req: Request, res: Response) => {
     console.log('[Telegram Auth] Existing user found:', !!existingUser);
 
     if (existingUser) {
+      // Validate referral code if provided and user doesn't have a referrer
+      let referredBy = existingUser.referredBy;
+      if (!referredBy && referralCode) {
+        console.log('[Telegram Auth] Processing referral code for existing user:', referralCode);
+        const referrer = await validateReferralCode(referralCode);
+        if (referrer && referrer.id !== existingUser.id) {
+          referredBy = referrer.id;
+          console.log('[Telegram Auth] Referral code validated, referred by:', referrer.id);
+        } else {
+          console.log('[Telegram Auth] Invalid or self-referral code:', referralCode);
+        }
+      }
+
       // Update user info if changed
       existingUser = await prisma.user.update({
         where: { telegramId },
@@ -454,6 +467,7 @@ router.post('/telegram', async (req: Request, res: Response) => {
           telegramFirstName: user.first_name,
           telegramLastName: user.last_name,
           telegramLanguageCode: user.language_code,
+          referredBy: referredBy,
         },
         include: { wallet: true },
       });

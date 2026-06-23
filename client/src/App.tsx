@@ -1490,20 +1490,21 @@ function App() {
         console.log('Referral code from URL (?startapp= or ?start=):', startParam);
       }
 
-      // 4. Parse initData as query string for startapp or start
+      // 4. Parse initData as query string for start_param, startapp or start
       if (!startParam && initData) {
         const params = new URLSearchParams(initData);
-        startParam = params.get('startapp') || params.get('start');
+        startParam = params.get('start_param') || params.get('startapp') || params.get('start');
         console.log('Referral code from initData query string:', startParam);
       }
 
-      // 5. Check tgWebAppData in URL hash for startapp or start
+      // 5. Check tgWebAppData in URL hash for start_param, startapp or start
       if (!startParam && typeof window !== 'undefined') {
         const hash = window.location.hash;
         console.log('URL hash:', hash);
         if (hash.includes('tgWebAppData')) {
-          const hashParams = new URLSearchParams(hash.split('?')[1] || '');
-          startParam = hashParams.get('startapp') || hashParams.get('start');
+          const hashString = hash.replace('#tgWebAppData=', '').split('&tgWebAppVersion')[0];
+          const hashParams = new URLSearchParams(decodeURIComponent(hashString));
+          startParam = hashParams.get('start_param') || hashParams.get('startapp') || hashParams.get('start');
           console.log('Referral code from hash:', startParam);
         }
       }

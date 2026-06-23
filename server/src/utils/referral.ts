@@ -65,8 +65,9 @@ export async function assignReferralCode(userId: string): Promise<string> {
  * Validate a referral code and return the referrer user
  */
 export async function validateReferralCode(code: string) {
+  const normalizedCode = code.trim().toUpperCase();
   const referrer = await prisma.user.findUnique({
-    where: { referralCode: code },
+    where: { referralCode: normalizedCode },
     select: {
       id: true,
       email: true,
