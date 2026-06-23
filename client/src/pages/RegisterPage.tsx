@@ -5,11 +5,14 @@ import { useToast } from '../context/ToastContext';
 import { authApi } from '../api';
 
 export default function RegisterPage() {
+  const searchParams = new URLSearchParams(window.location.search);
+  const initialReferralCode = searchParams.get('ref') || '';
+
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
-  const [referralCode, setReferralCode] = useState('');
+  const [referralCode, setReferralCode] = useState(initialReferralCode);
   const [showPassword, setShowPassword] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);

@@ -931,7 +931,7 @@ function ReferralModal({ isOpen, onClose }: ReferralModalProps) {
 
   const copyReferralCode = async () => {
     try {
-      const fullLink = `https://t.me/kendogamebot/kendo?startapp=${referralCode}`;
+      const fullLink = `https://t.me/kendogamebot/keno?startapp=${referralCode}`;
       if (navigator.clipboard && window.isSecureContext) {
         await navigator.clipboard.writeText(fullLink);
       } else {
@@ -1414,7 +1414,7 @@ function App() {
       console.log('Not running in Telegram WebApp');
       if (referralCode) {
         // Redirect to Telegram bot with start parameter (works on both mobile and PC)
-        const telegramUrl = `https://t.me/kendogamebot?start=${referralCode}`;
+        const telegramUrl = `https://t.me/kendogamebot/keno?startapp=${referralCode}`;
         console.log('Redirecting to Telegram:', telegramUrl);
         window.location.href = telegramUrl;
         return;
