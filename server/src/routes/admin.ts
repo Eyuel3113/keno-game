@@ -379,50 +379,56 @@ router.post('/deposits/:id/approve', authenticate, requireAdmin, async (req: Aut
       return res.status(400).json({ message: 'Not a deposit transaction' });
     }
 
-    // Check if this is the user's first deposit and they have a referrer
+    // Check if this is the user's first deposit
     const isFirstDeposit = !transaction.user.hasReceivedFirstDepositBonus;
     let referralBonus = 0;
+    let userBonus = 0;
     let referrerMessage = '';
 
-    if (isFirstDeposit && transaction.user.referredBy) {
-      // Calculate 10% referral bonus
-      referralBonus = transaction.amount * 0.1;
-      
-      // Get referrer's wallet
-      const referrer = await prisma.user.findUnique({
-        where: { id: transaction.user.referredBy },
-        include: { wallet: true }
-      });
+    if (isFirstDeposit) {
+      // 50% bonus for the user's first deposit
+      userBonus = transaction.amount * 0.5;
 
-      if (referrer && referrer.wallet) {
-        // Add bonus to referrer's wallet
-        await prisma.wallet.update({
-          where: { userId: referrer.id },
-          data: { balance: { increment: referralBonus } }
+      if (transaction.user.referredBy) {
+        // Calculate 10% referral bonus
+        referralBonus = transaction.amount * 0.1;
+        
+        // Get referrer's wallet
+        const referrer = await prisma.user.findUnique({
+          where: { id: transaction.user.referredBy },
+          include: { wallet: true }
         });
 
-        // Create transaction for referral bonus
-        await prisma.transaction.create({
-          data: {
-            userId: referrer.id,
-            type: 'DEPOSIT',
-            amount: referralBonus,
-            status: 'COMPLETED',
-            description: `Referral bonus from ${transaction.user.telegramUsername || transaction.user.email || 'referred user'}`
-          }
-        });
+        if (referrer && referrer.wallet) {
+          // Add bonus to referrer's wallet
+          await prisma.wallet.update({
+            where: { userId: referrer.id },
+            data: { balance: { increment: referralBonus } }
+          });
 
-        // Notify referrer
-        if (referrer.telegramId) {
-          const bonusMessage = `
+          // Create transaction for referral bonus
+          await prisma.transaction.create({
+            data: {
+              userId: referrer.id,
+              type: 'DEPOSIT',
+              amount: referralBonus,
+              status: 'COMPLETED',
+              description: `Referral bonus from ${transaction.user.telegramUsername || transaction.user.email || 'referred user'}`
+            }
+          });
+
+          // Notify referrer
+          if (referrer.telegramId) {
+            const bonusMessage = `
 <b>🎉 Referral Bonus Received!</b>
 
 You received ${referralBonus.toFixed(2)} ETB as a referral bonus from ${transaction.user.telegramUsername || transaction.user.email || 'a referred user'}'s first deposit.
-          `.trim();
-          await sendTelegramMessageToUser(referrer.telegramId, bonusMessage);
-        }
+            `.trim();
+            await sendTelegramMessageToUser(referrer.telegramId, bonusMessage);
+          }
 
-        referrerMessage = `\n\nReferral bonus of ${referralBonus.toFixed(2)} ETB has been credited to your referrer.`;
+          referrerMessage = `\n\nReferral bonus of ${referralBonus.toFixed(2)} ETB has been credited to your referrer.`;
+        }
       }
     }
 
@@ -430,12 +436,24 @@ You received ${referralBonus.toFixed(2)} ETB as a referral bonus from ${transact
     await prisma.$transaction([
       prisma.wallet.update({
         where: { userId: transaction.userId },
-        data: { balance: { increment: transaction.amount } }
+        data: { balance: { increment: transaction.amount + userBonus } }
       }),
       prisma.transaction.update({
         where: { id: req.params.id },
         data: { status: 'COMPLETED', updatedAt: new Date() }
       }),
+      // Create transaction record for the user's 50% bonus
+      ...(userBonus > 0 ? [
+        prisma.transaction.create({
+          data: {
+            userId: transaction.userId,
+            type: 'DEPOSIT',
+            amount: userBonus,
+            status: 'COMPLETED',
+            description: `First deposit 50% bonus`
+          }
+        })
+      ] : []),
       // Mark user as having received first deposit bonus if applicable
       ...(isFirstDeposit ? [
         prisma.user.update({
@@ -447,12 +465,13 @@ You received ${referralBonus.toFixed(2)} ETB as a referral bonus from ${transact
 
     // Send notification to user
     if (transaction.user.telegramId) {
+      const bonusLine = userBonus > 0 ? `\n🎁 <b>First Deposit Bonus:</b> +${userBonus.toFixed(2)} ETB (50%)` : '';
       const message = `
 <b>✅ Deposit Approved</b>
 
-Your deposit of ${transaction.amount} ETB has been approved and added to your wallet.${referrerMessage}
+Your deposit of ${transaction.amount} ETB has been approved and added to your wallet.${bonusLine}${referrerMessage}
 
-New balance: ${transaction.user.wallet.balance + transaction.amount} ETB
+Total credited: ${(transaction.amount + userBonus).toFixed(2)} ETB
 
 Thank you for using our service!
       `.trim();

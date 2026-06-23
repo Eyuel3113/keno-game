@@ -79,7 +79,7 @@ router.post('/register', async (req: Request, res: Response) => {
         verifyToken,
         verifyExpires,
         referredBy,
-        wallet: { create: { balance: 50 } },
+        wallet: { create: { balance: 0 } },
       },
     });
 
@@ -519,7 +519,7 @@ router.post('/telegram', async (req: Request, res: Response) => {
         telegramLanguageCode: user.language_code,
         emailVerified: true, // Telegram users are pre-verified
         referredBy,
-        wallet: { create: { balance: 50 } },
+        wallet: { create: { balance: 0 } },
       },
       include: { wallet: true },
     });

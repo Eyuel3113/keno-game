@@ -950,7 +950,7 @@ function ReferralModal({ isOpen, onClose }: ReferralModalProps) {
   };
 
   const shareViaTelegram = () => {
-    const message = `🎁 Join Keno Game using my referral code: ${referralCode}\n\nGet 50 free chips when you sign up!\n\nhttps://t.me/kendogamebot/kendo?startapp=${referralCode}`;
+    const message = `🎁 Join Keno Game using my referral code: ${referralCode}\n\nGet a 50% bonus on your first deposit when you sign up!\n\nhttps://t.me/kendogamebot/kendo?startapp=${referralCode}`;
     const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent('https://t.me/kendogamebot/kendo?startapp=' + referralCode)}&text=${encodeURIComponent(message)}`;
     window.open(telegramUrl, '_blank');
   };

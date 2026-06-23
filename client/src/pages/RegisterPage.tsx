@@ -111,7 +111,7 @@ export default function RegisterPage() {
               <p className="text-slate-400 text-sm leading-relaxed">
                 We sent a verification link to{' '}
                 <span className="text-violet-300 font-medium">{email}</span>.
-                Click it to activate your account and get your 50 free chips.
+                Click it to activate your account and get a 50% bonus on your first deposit.
               </p>
               <p className="text-slate-500 text-xs">
                 Didn't get it?{' '}

@@ -70,7 +70,7 @@ export default function Wallet() {
   };
 
   const shareViaTelegram = () => {
-    const message = `🎁 Join Keno Game using my referral code: ${referralCode}\n\nGet 50 free chips when you sign up!\n\n${window.location.origin}?ref=${referralCode}`;
+    const message = `🎁 Join Keno Game using my referral code: ${referralCode}\n\nGet a 50% bonus on your first deposit when you sign up!\n\n${window.location.origin}?ref=${referralCode}`;
     const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(window.location.origin + '?ref=' + referralCode)}&text=${encodeURIComponent(message)}`;
     window.open(telegramUrl, '_blank');
   };
@@ -448,9 +448,9 @@ export default function Wallet() {
 
                 {/* Bonus Info */}
                 <div className="bg-emerald-600/10 border border-emerald-500/30 rounded-xl p-4">
-                  <p className="text-emerald-300 text-sm font-semibold mb-1">🎉 Earn 10% Bonus!</p>
+                  <p className="text-emerald-300 text-sm font-semibold mb-1">🎉 Earn 10% Referral Bonus!</p>
                   <p className="text-slate-400 text-xs leading-relaxed">
-                    Get 10% of your referral's first deposit amount as a bonus when they make their first deposit.
+                    Get 10% of your referral's first deposit as a bonus. Your referred friends also get a 50% bonus on their first deposit!
                   </p>
                 </div>
               </>
