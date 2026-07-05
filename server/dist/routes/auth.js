@@ -75,7 +75,7 @@ router.post('/register', async (req, res) => {
                 verifyToken,
                 verifyExpires,
                 referredBy,
-                wallet: { create: { balance: 50 } },
+                wallet: { create: { balance: 0 } },
             },
         });
         // Generate referral code for the new user
@@ -364,6 +364,19 @@ router.post('/telegram', async (req, res) => {
         });
         console.log('[Telegram Auth] Existing user found:', !!existingUser);
         if (existingUser) {
+            // Validate referral code if provided and user doesn't have a referrer
+            let referredBy = existingUser.referredBy;
+            if (!referredBy && referralCode) {
+                console.log('[Telegram Auth] Processing referral code for existing user:', referralCode);
+                const referrer = await (0, referral_1.validateReferralCode)(referralCode);
+                if (referrer && referrer.id !== existingUser.id) {
+                    referredBy = referrer.id;
+                    console.log('[Telegram Auth] Referral code validated, referred by:', referrer.id);
+                }
+                else {
+                    console.log('[Telegram Auth] Invalid or self-referral code:', referralCode);
+                }
+            }
             // Update user info if changed
             existingUser = await db_1.default.user.update({
                 where: { telegramId },
@@ -372,6 +385,7 @@ router.post('/telegram', async (req, res) => {
                     telegramFirstName: user.first_name,
                     telegramLastName: user.last_name,
                     telegramLanguageCode: user.language_code,
+                    referredBy: referredBy,
                 },
                 include: { wallet: true },
             });
@@ -417,7 +431,7 @@ router.post('/telegram', async (req, res) => {
                 telegramLanguageCode: user.language_code,
                 emailVerified: true, // Telegram users are pre-verified
                 referredBy,
-                wallet: { create: { balance: 50 } },
+                wallet: { create: { balance: 0 } },
             },
             include: { wallet: true },
         });

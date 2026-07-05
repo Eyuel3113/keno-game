@@ -1,5 +1,6 @@
 import prisma from '../config/db';
 import { sendTelegramMessageToUser } from './telegramBot';
+import cron from 'node-cron';
 
 // Send game reminder to all Telegram users
 async function sendGameReminder() {
@@ -35,36 +36,29 @@ Click the game to start playing now!
   }
 }
 
-// Calculate time until next reminder
-function getNextReminderTime(hour: number, minute: number): number {
-  const now = new Date();
-  const next = new Date();
-  next.setHours(hour, minute, 0, 0);
-
-  if (next <= now) {
-    next.setDate(next.getDate() + 1);
-  }
-
-  return next.getTime() - now.getTime();
-}
-
-// Start the scheduler
+// Start the scheduler using node-cron
 export function startGameReminderScheduler() {
   // Send reminders at 10:00 AM and 6:00 PM (Ethiopia time)
-  const reminderTimes = [
-    { hour: 10, minute: 0 },
-    { hour: 18, minute: 0 },
-  ];
-
-  reminderTimes.forEach(({ hour, minute }) => {
-    const delay = getNextReminderTime(hour, minute);
-    
-    setTimeout(() => {
-      sendGameReminder();
-      // Schedule to repeat every 24 hours
-      setInterval(sendGameReminder, 24 * 60 * 60 * 1000);
-    }, delay);
-
-    console.log(`Game reminder scheduled for ${hour}:${minute.toString().padStart(2, '0')} (first run in ${Math.round(delay / 1000 / 60)} minutes)`);
+  // Cron format: minute hour day-of-month month day-of-week
+  // 0 10 * * * = Every day at 10:00 AM
+  // 0 18 * * * = Every day at 6:00 PM
+  
+  const morningReminder = cron.schedule('0 10 * * *', () => {
+    console.log('Running morning game reminder at 10:00 AM');
+    sendGameReminder();
+  }, {
+    timezone: 'Africa/Addis_Ababa'
   });
+
+  const eveningReminder = cron.schedule('0 18 * * *', () => {
+    console.log('Running evening game reminder at 6:00 PM');
+    sendGameReminder();
+  }, {
+    timezone: 'Africa/Addis_Ababa'
+  });
+
+  console.log('Game reminders scheduled for 10:00 AM and 6:00 PM (Africa/Addis_Ababa timezone)');
+
+  // Return tasks for potential cleanup
+  return { morningReminder, eveningReminder };
 }
